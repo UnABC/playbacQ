@@ -1,6 +1,7 @@
 FROM gcc:15.2 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
+	git \
 	cmake \
 	uuid-dev \
 	zlib1g-dev \
@@ -8,6 +9,10 @@ RUN apt-get update && apt-get install -y \
 	libjsoncpp-dev \
 	default-libmysqlclient-dev \
 	&& rm -rf /var/lib/apt/lists/*
+RUN git clone https://github.com/drogonframework/drogon \
+	&& cd drogon \
+	&& git submodule update --init \
+	&& mkdir build && cd build && cmake .. && make -j$(nproc) && make install
 WORKDIR /app
 COPY CMakeLists.txt /app/
 COPY src/ /app/src/
@@ -23,6 +28,5 @@ RUN apt-get update && apt-get install -y \
 	&& rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /app/build/ /app/
-COPY --from=builder /app/config.json /app/
 EXPOSE 8080
 CMD ["./server"]
