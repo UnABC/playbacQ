@@ -4,6 +4,11 @@ SET
 	collation_connection = 'utf8mb4_general_ci';
 CREATE DATABASE IF NOT EXISTS playbacq;
 USE playbacq;
+
+-- Grant privileges to the user (created by MYSQL_USER in docker-compose.yml)
+GRANT ALL PRIVILEGES ON playbacq.* TO 'playbacq_user'@'%';
+FLUSH PRIVILEGES;
+
 CREATE TABLE IF NOT EXISTS videos (
 	video_id VARCHAR(255) PRIMARY KEY,
 	user_id VARCHAR(32),

@@ -16,17 +16,25 @@ RUN git clone https://github.com/drogonframework/drogon \
 WORKDIR /app
 COPY CMakeLists.txt /app/
 COPY src/ /app/src/
+COPY test/ /app/test/
+COPY models/ /app/models/
 RUN mkdir build && cd build && cmake .. && make -j$(nproc)
 
-FROM debian:bookworm-slim AS runtime
+FROM gcc:15.2
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
-	libssl3 \
-	libjsoncpp25 \
-	libmariadb3 \
 	ca-certificates \
 	&& rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=builder /app/build/ /app/
+COPY --from=builder /app/build/playbacq /app/playbacq
+COPY --from=builder /usr/local/lib /usr/local/lib
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libjsoncpp.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libbrotli*.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libpq.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libsqlite3.so* /usr/lib/x86_64-linux-gnu/
+RUN ldconfig
 EXPOSE 8080
-CMD ["./server"]
+WORKDIR /app
+COPY --from=builder /app/build/playbacq /usr/local/bin/playbacq
+RUN chmod +x /usr/local/bin/playbacq && ldconfig
+CMD ["/usr/local/bin/playbacq"]
