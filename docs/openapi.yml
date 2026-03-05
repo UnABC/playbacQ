@@ -1,0 +1,193 @@
+openapi: 3.1.0
+info:
+  title: playbacQ
+  version: "0.0.1"
+  description: "playbacQサーバーのAPIです。"
+  contact:
+    name: traP
+    url: "https://trap.jp/"
+  
+servers:
+  - url: "http://localhost:8080/api"
+    description: local
+
+paths:
+  /api/videos:
+    get:
+      summary: "動画一覧の取得"
+      operationId: getVideos
+      parameters:
+        - schema:
+            type: "string"
+          name: "userId"
+          in: "query"
+          description: "ユーザーIDで動画をフィルタリングします。"
+        - schema:
+            type: "string"
+          name: "search"
+          in: "query"
+          description: "動画のタイトルや説明で検索します。"
+        - schema:
+            type: "string"
+          name: "tag"
+          in: "query"
+          description: "動画のタグでフィルタリングします。"
+      responses:
+        '200':
+          description: "動画の一覧を取得します。"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Video'
+    post:
+      summary: "動画の投稿"
+      operationId: createVideo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: "動画のタイトル"
+                url:
+                  type: string
+                  description: "動画のURL"
+                thumbnailUrl:
+                  type: string
+                  description: "動画のサムネイルURL"
+      responses:
+        '201':
+          description: "動画が作成されました。"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+
+  /api/videos/{id}:
+    get:
+      summary: "動画の取得"
+      operationId: getVideoById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: "動画のID"
+      responses:
+        '200':
+          description: "動画を返します。"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+        '403':
+          description: "アクセスが拒否されました。"
+        '404':
+          description: "動画が見つかりませんでした。"
+  /api/videos/{id}/comments:
+    get:
+      summary: "動画のコメントの取得"
+      operationId: getCommentsByVideoId
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: "動画のID"
+      responses:
+        '200':
+          description: "動画のコメントを返します。"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Comment'
+    post:
+      summary: "動画のコメントの投稿"
+      operationId: createComment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: "動画のID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  description: "コメントの内容"
+                timestamp:
+                  type: number
+                  format: float
+                  description: "コメントの投稿時間"
+      responses:
+        '201':
+          description: "コメントが作成されました。"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+components:
+  schemas:
+    Video:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          description: "動画のID"
+        title:
+          type: string
+          readOnly: true
+          description: "動画のタイトル"
+        url:
+          type: string
+          readOnly: true
+          description: "動画のURL"
+        thumbnailUrl:
+          type: string
+          readOnly: true
+          description: "動画のサムネイルURL"
+        viewCount:
+          type: integer
+          readOnly: true
+          description: "動画の再生回数"
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          description: "コメントのID"
+        content:
+          type: string
+          description: "コメントの内容"
+        timestamp:
+          type: number
+          format: float
+          description: "コメントの投稿時間"
+        userId:
+          type: integer
+          description: "コメントを投稿したユーザーのID"
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          description: "コメントの作成日時"
