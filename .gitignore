@@ -6,6 +6,7 @@
 *.dylib
 
 # etc
+/build/
 /.vscode/
 /tmp/
 .DS_Store
