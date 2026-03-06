@@ -140,11 +140,11 @@ class Comments
 
     /**  For column timestamp  */
     ///Get the value of the column timestamp, returns the default value if the column is null
-    const double &getValueOfTimestamp() const noexcept;
+    const float &getValueOfTimestamp() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<double> &getTimestamp() const noexcept;
+    const std::shared_ptr<float> &getTimestamp() const noexcept;
     ///Set the value of the column timestamp
-    void setTimestamp(const double &pTimestamp) noexcept;
+    void setTimestamp(const float &pTimestamp) noexcept;
 
     /**  For column created_at  */
     ///Get the value of the column created_at, returns the default value if the column is null
@@ -182,7 +182,7 @@ class Comments
     std::shared_ptr<std::string> videoId_;
     std::shared_ptr<std::string> userId_;
     std::shared_ptr<std::string> comment_;
-    std::shared_ptr<double> timestamp_;
+    std::shared_ptr<float> timestamp_;
     std::shared_ptr<::trantor::Date> createdAt_;
     struct MetaData
     {

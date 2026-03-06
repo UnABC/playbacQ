@@ -12,7 +12,14 @@
 
 using namespace api;
 
+enum class Status {
+	pending,
+	processing,
+	completed
+};
+
 drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
+	std::optional<std::string> userId = req->getOptionalParameter<std::string>("userId");
 	std::optional<std::string> search = req->getOptionalParameter<std::string>("search");
 	std::optional<std::string> tag = req->getOptionalParameter<std::string>("tag");
 	std::optional<std::string> sortby = req->getOptionalParameter<std::string>("sortby");
@@ -21,7 +28,10 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 	drogon::orm::Criteria criteria;
 
-	criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_user_id, drogon::orm::CompareOperator::EQ, req->getAttributes()->get<std::string>("userId"));
+	criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_status, drogon::orm::CompareOperator::EQ, Status::completed);
+	if (userId.has_value()) {
+		criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_user_id, drogon::orm::CompareOperator::EQ, userId.value());
+	}
 	if (search.has_value()) {
 		std::string searchStr = "%" + search.value() + "%";
 		auto titleCriteria = drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_title, drogon::orm::CompareOperator::Like, searchStr);
@@ -97,6 +107,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos([[maybe_unused]] HttpRe
 			newVideo.setThumbnailUrl(thumbnailUrlString);
 		}
 		newVideo.setUserId(req->getAttributes()->get<std::string>("userId"));
+		newVideo.setStatus(Status::pending);
 
 		drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 		co_await mapper.insert(newVideo);
