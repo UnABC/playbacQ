@@ -9,6 +9,7 @@
 #include <regex>
 #include "../models/Videos.h"
 #include "../models/Tags.h"
+#include "../plugins/S3Plugin.h"
 
 using namespace api;
 
@@ -28,7 +29,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 	drogon::orm::Criteria criteria;
 
-	criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_status, drogon::orm::CompareOperator::EQ, Status::completed);
+	criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_status, drogon::orm::CompareOperator::EQ, (uint8_t)Status::completed);
 	if (userId.has_value()) {
 		criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_user_id, drogon::orm::CompareOperator::EQ, userId.value());
 	}
@@ -72,7 +73,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 	}
 }
 
-drogon::Task<drogon::HttpResponsePtr> videos::postVideos([[maybe_unused]] HttpRequestPtr req) {
+drogon::Task<drogon::HttpResponsePtr> videos::postVideos(HttpRequestPtr req) {
 	auto jsonPtr = req->getJsonObject();
 	if (!jsonPtr) {
 		auto resp = drogon::HttpResponse::newHttpResponse();
@@ -83,36 +84,36 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos([[maybe_unused]] HttpRe
 	try {
 		drogon_model::playbacq::Videos newVideo;
 		// 動画IDは乱数。垓一衝突したらエラーを投げるはずなのでユーザーがもう一度リクエストすればよい。
-		newVideo.setVideoId(drogon::utils::genRandomString(11));
+		std::string videoId = drogon::utils::genRandomString(11);
+		newVideo.setVideoId(videoId);
 		newVideo.setCreatedAt(trantor::Date::now());
 		newVideo.setViewCount(0);
 
 		// JSONから動画情報を設定
-		newVideo.setTitle((*jsonPtr)["title"].asString());
-		newVideo.setDescription((*jsonPtr)["description"].asString());
-		if (auto urlString = (*jsonPtr)["url"].asString(); urlString.empty() || !std::regex_search(urlString, std::regex(R"(^(https?|ftp)://[^\s/$.?#].[^\s]*)"))) {
-			auto resp = drogon::HttpResponse::newHttpResponse();
-			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
-			resp->setBody("Invalid video URL");
-			co_return resp;
-		} else {
-			newVideo.setVideoUrl(urlString);
-		}
-		if (auto thumbnailUrlString = (*jsonPtr)["thumbnail_url"].asString(); thumbnailUrlString.empty() || !std::regex_search(thumbnailUrlString, std::regex(R"(^(https?|ftp)://[^\s/$.?#].[^\s]*)"))) {
-			auto resp = drogon::HttpResponse::newHttpResponse();
-			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
-			resp->setBody("Invalid thumbnail URL");
-			co_return resp;
-		} else {
-			newVideo.setThumbnailUrl(thumbnailUrlString);
-		}
+		newVideo.setTitle(jsonPtr->get("title", "NULL").asString());
+		newVideo.setDescription(jsonPtr->get("description", "NULL").asString());
 		newVideo.setUserId(req->getAttributes()->get<std::string>("userId"));
-		newVideo.setStatus(Status::pending);
+		newVideo.setStatus((uint8_t)Status::pending);
+
+		// S3の事前署名URLを生成
+		auto s3Plugin = drogon::app().getPlugin<S3Plugin>();
+		std::string uploadUrl = s3Plugin->genPresignedUrl(videoId + ".mp4");
+		std::string thumbUploadUrl = s3Plugin->genPresignedUrl(videoId + ".jpg", "thumbnails");
+
+		// 動画URLを設定
+		auto customConfig = drogon::app().getCustomConfig();
+		std::string baseUrl = customConfig["baseUrl"].asString();
+		newVideo.setVideoUrl(baseUrl + "/watch/" + videoId + ".mp4");
+		newVideo.setThumbnailUrl(baseUrl + "/thumbnails/" + videoId + ".jpg");
 
 		drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 		co_await mapper.insert(newVideo);
 
-		auto resp = drogon::HttpResponse::newHttpJsonResponse(newVideo.toJson());
+		Json::Value jsonResponse = newVideo.toJson();
+		jsonResponse["uploadUrl"] = uploadUrl;
+		jsonResponse["thumbUploadUrl"] = thumbUploadUrl;
+
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
 		resp->setStatusCode(drogon::HttpStatusCode::k201Created);
 		co_return resp;
 	}

@@ -21,6 +21,7 @@ const std::string Videos::Cols::_thumbnail_url = "thumbnail_url";
 const std::string Videos::Cols::_video_url = "video_url";
 const std::string Videos::Cols::_created_at = "created_at";
 const std::string Videos::Cols::_view_count = "view_count";
+const std::string Videos::Cols::_status = "status";
 const std::string Videos::primaryKeyName = "video_id";
 const bool Videos::hasPrimaryKey = true;
 const std::string Videos::tableName = "videos";
@@ -33,7 +34,8 @@ const std::vector<typename Videos::MetaData> Videos::metaData_={
 {"thumbnail_url","std::string","text",0,0,0,0},
 {"video_url","std::string","text",0,0,0,1},
 {"created_at","::trantor::Date","timestamp",0,0,0,0},
-{"view_count","int32_t","int",4,0,0,1}
+{"view_count","int32_t","int",4,0,0,1},
+{"status","uint8_t","tinyint unsigned",1,0,0,1}
 };
 const std::string &Videos::getColumnName(size_t index) noexcept(false)
 {
@@ -94,11 +96,15 @@ Videos::Videos(const Row &r, const ssize_t indexOffset) noexcept
         {
             viewCount_=std::make_shared<int32_t>(r["view_count"].as<int32_t>());
         }
+        if(!r["status"].isNull())
+        {
+            status_=std::make_shared<uint8_t>(r["status"].as<uint8_t>());
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 8 > r.size())
+        if(offset + 9 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -162,13 +168,18 @@ Videos::Videos(const Row &r, const ssize_t indexOffset) noexcept
         {
             viewCount_=std::make_shared<int32_t>(r[index].as<int32_t>());
         }
+        index = offset + 8;
+        if(!r[index].isNull())
+        {
+            status_=std::make_shared<uint8_t>(r[index].as<uint8_t>());
+        }
     }
 
 }
 
 Videos::Videos(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 9)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -253,6 +264,14 @@ Videos::Videos(const Json::Value &pJson, const std::vector<std::string> &pMasque
         if(!pJson[pMasqueradingVector[7]].isNull())
         {
             viewCount_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[7]].asInt64());
+        }
+    }
+    if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson[pMasqueradingVector[8]].isNull())
+        {
+            status_=std::make_shared<uint8_t>((uint8_t)pJson[pMasqueradingVector[8]].asUInt64());
         }
     }
 }
@@ -341,12 +360,20 @@ Videos::Videos(const Json::Value &pJson) noexcept(false)
             viewCount_=std::make_shared<int32_t>((int32_t)pJson["view_count"].asInt64());
         }
     }
+    if(pJson.isMember("status"))
+    {
+        dirtyFlag_[8]=true;
+        if(!pJson["status"].isNull())
+        {
+            status_=std::make_shared<uint8_t>((uint8_t)pJson["status"].asUInt64());
+        }
+    }
 }
 
 void Videos::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 9)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -432,6 +459,14 @@ void Videos::updateByMasqueradedJson(const Json::Value &pJson,
             viewCount_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[7]].asInt64());
         }
     }
+    if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson[pMasqueradingVector[8]].isNull())
+        {
+            status_=std::make_shared<uint8_t>((uint8_t)pJson[pMasqueradingVector[8]].asUInt64());
+        }
+    }
 }
 
 void Videos::updateByJson(const Json::Value &pJson) noexcept(false)
@@ -515,6 +550,14 @@ void Videos::updateByJson(const Json::Value &pJson) noexcept(false)
         if(!pJson["view_count"].isNull())
         {
             viewCount_=std::make_shared<int32_t>((int32_t)pJson["view_count"].asInt64());
+        }
+    }
+    if(pJson.isMember("status"))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson["status"].isNull())
+        {
+            status_=std::make_shared<uint8_t>((uint8_t)pJson["status"].asUInt64());
         }
     }
 }
@@ -710,6 +753,23 @@ void Videos::setViewCount(const int32_t &pViewCount) noexcept
     dirtyFlag_[7] = true;
 }
 
+const uint8_t &Videos::getValueOfStatus() const noexcept
+{
+    static const uint8_t defaultValue = uint8_t();
+    if(status_)
+        return *status_;
+    return defaultValue;
+}
+const std::shared_ptr<uint8_t> &Videos::getStatus() const noexcept
+{
+    return status_;
+}
+void Videos::setStatus(const uint8_t &pStatus) noexcept
+{
+    status_ = std::make_shared<uint8_t>(pStatus);
+    dirtyFlag_[8] = true;
+}
+
 void Videos::updateId(const uint64_t id)
 {
 }
@@ -724,7 +784,8 @@ const std::vector<std::string> &Videos::insertColumns() noexcept
         "thumbnail_url",
         "video_url",
         "created_at",
-        "view_count"
+        "view_count",
+        "status"
     };
     return inCols;
 }
@@ -819,6 +880,17 @@ void Videos::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[8])
+    {
+        if(getStatus())
+        {
+            binder << getValueOfStatus();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 
 const std::vector<std::string> Videos::updateColumns() const
@@ -855,6 +927,10 @@ const std::vector<std::string> Videos::updateColumns() const
     if(dirtyFlag_[7])
     {
         ret.push_back(getColumnName(7));
+    }
+    if(dirtyFlag_[8])
+    {
+        ret.push_back(getColumnName(8));
     }
     return ret;
 }
@@ -949,6 +1025,17 @@ void Videos::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[8])
+    {
+        if(getStatus())
+        {
+            binder << getValueOfStatus();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 Json::Value Videos::toJson() const
 {
@@ -1017,6 +1104,14 @@ Json::Value Videos::toJson() const
     {
         ret["view_count"]=Json::Value();
     }
+    if(getStatus())
+    {
+        ret["status"]=getValueOfStatus();
+    }
+    else
+    {
+        ret["status"]=Json::Value();
+    }
     return ret;
 }
 
@@ -1029,7 +1124,7 @@ Json::Value Videos::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 8)
+    if(pMasqueradingVector.size() == 9)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -1119,6 +1214,17 @@ Json::Value Videos::toMasqueradedJson(
                 ret[pMasqueradingVector[7]]=Json::Value();
             }
         }
+        if(!pMasqueradingVector[8].empty())
+        {
+            if(getStatus())
+            {
+                ret[pMasqueradingVector[8]]=getValueOfStatus();
+            }
+            else
+            {
+                ret[pMasqueradingVector[8]]=Json::Value();
+            }
+        }
         return ret;
     }
     LOG_ERROR << "Masquerade failed";
@@ -1186,6 +1292,14 @@ Json::Value Videos::toMasqueradedJson(
     {
         ret["view_count"]=Json::Value();
     }
+    if(getStatus())
+    {
+        ret["status"]=getValueOfStatus();
+    }
+    else
+    {
+        ret["status"]=Json::Value();
+    }
     return ret;
 }
 
@@ -1246,13 +1360,18 @@ bool Videos::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(7, "view_count", pJson["view_count"], err, true))
             return false;
     }
+    if(pJson.isMember("status"))
+    {
+        if(!validJsonOfField(8, "status", pJson["status"], err, true))
+            return false;
+    }
     return true;
 }
 bool Videos::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                 const std::vector<std::string> &pMasqueradingVector,
                                                 std::string &err)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 9)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1337,6 +1456,14 @@ bool Videos::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                   return false;
           }
       }
+      if(!pMasqueradingVector[8].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[8]))
+          {
+              if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1392,13 +1519,18 @@ bool Videos::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(7, "view_count", pJson["view_count"], err, false))
             return false;
     }
+    if(pJson.isMember("status"))
+    {
+        if(!validJsonOfField(8, "status", pJson["status"], err, false))
+            return false;
+    }
     return true;
 }
 bool Videos::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                               const std::vector<std::string> &pMasqueradingVector,
                                               std::string &err)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 9)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1447,6 +1579,11 @@ bool Videos::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
       if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
       {
           if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+      {
+          if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, false))
               return false;
       }
     }
@@ -1568,6 +1705,18 @@ bool Videos::validJsonOfField(size_t index,
                 return false;
             }
             if(!pJson.isInt())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 8:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isUInt())
             {
                 err="Type error in the "+fieldName+" field";
                 return false;

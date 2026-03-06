@@ -1,15 +1,20 @@
 /* This is a JSON format configuration file
  */
 {
-    
     //ssl:The global SSL settings. "key" and "cert" are the path to the SSL key and certificate. While
     //    "conf" is an array of 1 or 2-element tuples that supplies file style options for `SSL_CONF_cmd`.
     "ssl": {
         "cert": "../../trantor/trantor/tests/server.crt",
         "key": "../../trantor/trantor/tests/server.key",
         "conf": [
-            ["Options", "-SessionTicket"], 
-            ["Options", "Compression"]
+            [
+                "Options",
+                "-SessionTicket"
+            ],
+            [
+                "Options",
+                "Compression"
+            ]
         ]
     },
     "listeners": [
@@ -20,7 +25,7 @@
             "port": 80,
             //https: If true, use https for security,false by default
             "https": false
-        }/*,
+        } /*,
         {
             "address": "0.0.0.0",
             "port": 443,
@@ -61,7 +66,7 @@
             //timeout: 10 seconds timeout
             "timeout": 10.0
         }
-    ],/*
+    ], /*
     "redis_clients": [
         {
             //name: Name of the client,'default' by default
@@ -96,7 +101,7 @@
         "session_timeout": 0,
         //string value of SameSite attribute of the Set-Cookie HTTP response header
         //valid value is either 'Null' (default), 'Lax', 'Strict' or 'None'
-        "session_same_site" : "Null",
+        "session_same_site": "Null",
         //session_cookie_key: The cookie key of the session, "JSESSIONID" by default
         "session_cookie_key": "JSESSIONID",
         //session_max_age: The max age of the session cookie, -1 by default
@@ -326,13 +331,20 @@
                 "log_file": "access.log",
                 "log_size_limit": 0,
                 "use_local_time": true,
-                "log_index": 0,
+                "log_index": 0
                 // "show_microseconds": true,
                 // "custom_time_format": "",
                 // "use_real_ip": false
             }
+        },
+        {
+            "name": "S3Plugin",
+            "dependencies": [],
+            "config": {}
         }
     ],
     //custom_config: custom configuration for users. This object can be get by the app().getCustomConfig() method. 
-    "custom_config": {}
+    "custom_config": {
+        "baseUrl": "https://playbacq.trap.jp"
+    }
 }

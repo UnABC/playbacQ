@@ -64,12 +64,6 @@ paths:
                 title:
                   type: string
                   description: "動画のタイトル"
-                url:
-                  type: string
-                  description: "動画のURL"
-                thumbnail_url:
-                  type: string
-                  description: "動画のサムネイルURL"
                 description:
                   type: string
                   description: "動画の説明"

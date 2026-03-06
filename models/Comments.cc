@@ -28,7 +28,7 @@ const std::vector<typename Comments::MetaData> Comments::metaData_={
 {"video_id","std::string","varchar(255)",255,0,0,0},
 {"user_id","std::string","varchar(32)",32,0,0,0},
 {"comment","std::string","text",0,0,0,1},
-{"timestamp","float","float",4,0,0,1},
+{"timestamp","double","double",4,0,0,1},
 {"created_at","::trantor::Date","timestamp",0,0,0,0}
 };
 const std::string &Comments::getColumnName(size_t index) noexcept(false)
@@ -58,7 +58,7 @@ Comments::Comments(const Row &r, const ssize_t indexOffset) noexcept
         }
         if(!r["timestamp"].isNull())
         {
-            timestamp_=std::make_shared<float>(r["timestamp"].as<float>());
+            timestamp_=std::make_shared<double>(r["timestamp"].as<double>());
         }
         if(!r["created_at"].isNull())
         {
@@ -115,7 +115,7 @@ Comments::Comments(const Row &r, const ssize_t indexOffset) noexcept
         index = offset + 4;
         if(!r[index].isNull())
         {
-            timestamp_=std::make_shared<float>(r[index].as<float>());
+            timestamp_=std::make_shared<double>(r[index].as<double>());
         }
         index = offset + 5;
         if(!r[index].isNull())
@@ -188,7 +188,7 @@ Comments::Comments(const Json::Value &pJson, const std::vector<std::string> &pMa
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            timestamp_=std::make_shared<float>(pJson[pMasqueradingVector[4]].asFloat());
+            timestamp_=std::make_shared<double>(pJson[pMasqueradingVector[4]].asDouble());
         }
      }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -258,7 +258,7 @@ Comments::Comments(const Json::Value &pJson) noexcept(false)
         dirtyFlag_[4]=true;
         if(!pJson["timestamp"].isNull())
         {
-            timestamp_=std::make_shared<float>(pJson["timestamp"].asFloat());
+            timestamp_=std::make_shared<double>(pJson["timestamp"].asDouble());
         }
      }
     if(pJson.isMember("created_at"))
@@ -333,7 +333,7 @@ void Comments::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            timestamp_=std::make_shared<float>(pJson[pMasqueradingVector[4]].asFloat());
+            timestamp_=std::make_shared<double>(pJson[pMasqueradingVector[4]].asDouble());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -402,7 +402,7 @@ void Comments::updateByJson(const Json::Value &pJson) noexcept(false)
         dirtyFlag_[4] = true;
         if(!pJson["timestamp"].isNull())
         {
-            timestamp_=std::make_shared<float>(pJson["timestamp"].asFloat());
+            timestamp_=std::make_shared<double>(pJson["timestamp"].asDouble());
         }
     }
     if(pJson.isMember("created_at"))
@@ -531,20 +531,20 @@ void Comments::setComment(std::string &&pComment) noexcept
     dirtyFlag_[3] = true;
 }
 
-const float &Comments::getValueOfTimestamp() const noexcept
+const double &Comments::getValueOfTimestamp() const noexcept
 {
-    static const float defaultValue = float();
+    static const double defaultValue = double();
     if(timestamp_)
         return *timestamp_;
     return defaultValue;
 }
-const std::shared_ptr<float> &Comments::getTimestamp() const noexcept
+const std::shared_ptr<double> &Comments::getTimestamp() const noexcept
 {
     return timestamp_;
 }
-void Comments::setTimestamp(const float &pTimestamp) noexcept
+void Comments::setTimestamp(const double &pTimestamp) noexcept
 {
-    timestamp_ = std::make_shared<float>(pTimestamp);
+    timestamp_ = std::make_shared<double>(pTimestamp);
     dirtyFlag_[4] = true;
 }
 

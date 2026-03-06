@@ -45,10 +45,10 @@ drogon::Task<drogon::HttpResponsePtr> comments::postVideo([[maybe_unused]] HttpR
     try {
         drogon_model::playbacq::Comments newComment;
         newComment.setVideoId(videoId);
-        newComment.setComment((*jsonPtr)["content"].asString());
+        newComment.setComment(jsonPtr->get("content", "").asString());
         newComment.setUserId(req->getAttributes()->get<std::string>("userId"));
         newComment.setCreatedAt(trantor::Date::now());
-        newComment.setTimestamp((*jsonPtr)["timestamp"].asDouble());
+        newComment.setTimestamp(jsonPtr->get("timestamp", 0.0).asDouble());
 
         drogon::orm::CoroMapper<drogon_model::playbacq::Comments> mapper(drogon::app().getDbClient());
         auto insertedComment = co_await mapper.insert(newComment);
