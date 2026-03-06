@@ -67,9 +67,15 @@ paths:
                 url:
                   type: string
                   description: "動画のURL"
-                thumbnailUrl:
+                thumbnail_url:
                   type: string
                   description: "動画のサムネイルURL"
+                description:
+                  type: string
+                  description: "動画の説明"
+                user_id:
+                  type: string
+                  description: "動画を投稿するユーザーのID"
       responses:
         '201':
           description: "動画が作成されました。"

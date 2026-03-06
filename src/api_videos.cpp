@@ -66,8 +66,53 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 }
 
 drogon::Task<drogon::HttpResponsePtr> videos::postVideos([[maybe_unused]] HttpRequestPtr req) {
-	auto resp = drogon::HttpResponse::newHttpResponse();
-	resp->setStatusCode(drogon::HttpStatusCode::k200OK);
-	resp->setBody("POST /api/videos is not implemented yet");
-	co_return resp;
+	auto jsonPtr = req->getJsonObject();
+	if (!jsonPtr) {
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+		resp->setBody("Invalid JSON format");
+		co_return resp;
+	}
+	try {
+		drogon_model::playbacq::Videos newVideo;
+		newVideo.setVideoId(drogon::utils::getUuid());
+		newVideo.setCreatedAt(trantor::Date::now());
+		newVideo.setViewCount(0);
+
+		// JSONから動画情報を設定
+		newVideo.setTitle((*jsonPtr)["title"].asString());
+		newVideo.setDescription((*jsonPtr)["description"].asString());
+		if (auto urlString = (*jsonPtr)["url"].asString(); urlString.empty() || !std::regex_search(urlString, std::regex(R"(^(https?|ftp)://[^\s/$.?#].[^\s]*)"))) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+			resp->setBody("Invalid video URL");
+			co_return resp;
+		} else {
+			newVideo.setVideoUrl(urlString);
+		}
+		if (auto thumbnailUrlString = (*jsonPtr)["thumbnailUrl"].asString(); thumbnailUrlString.empty() || !std::regex_search(thumbnailUrlString, std::regex(R"(^(https?|ftp)://[^\s/$.?#].[^\s]*)"))) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+			resp->setBody("Invalid thumbnail URL");
+			co_return resp;
+		} else {
+			newVideo.setThumbnailUrl(thumbnailUrlString);
+		}
+
+		// TODO : user_idの設定。認証機能が実装された後に、リクエストからユーザーIDを取得して設定する必要がある。
+
+		drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+		co_await mapper.insert(newVideo);
+
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(newVideo.toJson());
+		resp->setStatusCode(drogon::HttpStatusCode::k201Created);
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to create video: " + std::string(e.what()));
+		co_return resp;
+	}
 }
