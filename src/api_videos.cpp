@@ -1,18 +1,18 @@
 #include "api_videos.h"
+#include <drogon/orm/Exception.h>
 #include <drogon/orm/CoroMapper.h>
 #include <drogon/orm/Criteria.h>
 #include <json/json.h>
 #include <string>
 #include <optional>
 #include <iostream>
+#include <regex>
 #include "../models/Videos.h"
 #include "../models/Tags.h"
 
 using namespace api;
 
-// Add definition of your processing function here
 drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
-	std::optional<std::string> userId = req->getOptionalParameter<std::string>("userId");
 	std::optional<std::string> search = req->getOptionalParameter<std::string>("search");
 	std::optional<std::string> tag = req->getOptionalParameter<std::string>("tag");
 	std::optional<std::string> sortby = req->getOptionalParameter<std::string>("sortby");
@@ -21,9 +21,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 	drogon::orm::Criteria criteria;
 
-	if (userId.has_value()) {
-		criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_user_id, drogon::orm::CompareOperator::EQ, userId.value());
-	}
+	criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_user_id, drogon::orm::CompareOperator::EQ, req->getAttributes()->get<std::string>("userId"));
 	if (search.has_value()) {
 		std::string searchStr = "%" + search.value() + "%";
 		auto titleCriteria = drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_title, drogon::orm::CompareOperator::Like, searchStr);
@@ -53,8 +51,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 		for (const auto& video : videosList) {
 			jsonResponse.append(video.toJson());
 		}
-		auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
-		co_return resp;
+		co_return drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
 	}
 	catch (const std::exception& e) {
 		std::cerr << "DB Error: " << e.what() << std::endl;
@@ -75,7 +72,8 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos([[maybe_unused]] HttpRe
 	}
 	try {
 		drogon_model::playbacq::Videos newVideo;
-		newVideo.setVideoId(drogon::utils::getUuid());
+		// 動画IDは乱数。垓一衝突したらエラーを投げるはずなのでユーザーがもう一度リクエストすればよい。
+		newVideo.setVideoId(drogon::utils::genRandomString(11));
 		newVideo.setCreatedAt(trantor::Date::now());
 		newVideo.setViewCount(0);
 
@@ -90,7 +88,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos([[maybe_unused]] HttpRe
 		} else {
 			newVideo.setVideoUrl(urlString);
 		}
-		if (auto thumbnailUrlString = (*jsonPtr)["thumbnailUrl"].asString(); thumbnailUrlString.empty() || !std::regex_search(thumbnailUrlString, std::regex(R"(^(https?|ftp)://[^\s/$.?#].[^\s]*)"))) {
+		if (auto thumbnailUrlString = (*jsonPtr)["thumbnail_url"].asString(); thumbnailUrlString.empty() || !std::regex_search(thumbnailUrlString, std::regex(R"(^(https?|ftp)://[^\s/$.?#].[^\s]*)"))) {
 			auto resp = drogon::HttpResponse::newHttpResponse();
 			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
 			resp->setBody("Invalid thumbnail URL");
@@ -98,8 +96,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos([[maybe_unused]] HttpRe
 		} else {
 			newVideo.setThumbnailUrl(thumbnailUrlString);
 		}
-
-		// TODO : user_idの設定。認証機能が実装された後に、リクエストからユーザーIDを取得して設定する必要がある。
+		newVideo.setUserId(req->getAttributes()->get<std::string>("userId"));
 
 		drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 		co_await mapper.insert(newVideo);
@@ -113,6 +110,29 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos([[maybe_unused]] HttpRe
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
 		resp->setBody("Failed to create video: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::getVideo([[maybe_unused]] HttpRequestPtr req, std::string id) {
+	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+	try {
+		auto video = co_await mapper.findByPrimaryKey(id);
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(video.toJson());
+		co_return resp;
+	}
+	catch (const drogon::orm::UnexpectedRows& e) {
+		// NOt found 404
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+		resp->setBody("Video not found");
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "DB Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to retrieve video: " + std::string(e.what()));
 		co_return resp;
 	}
 }

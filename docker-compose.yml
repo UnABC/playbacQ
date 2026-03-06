@@ -34,6 +34,18 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000" # API用
+      - "9001:9001" # コンソール用
+    volumes:
+      - minio_data:/data
 volumes:
   db_data:
   redis_data:
+  minio_data:

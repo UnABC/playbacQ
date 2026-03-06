@@ -73,9 +73,6 @@ paths:
                 description:
                   type: string
                   description: "動画の説明"
-                user_id:
-                  type: string
-                  description: "動画を投稿するユーザーのID"
       responses:
         '201':
           description: "動画が作成されました。"
@@ -150,7 +147,7 @@ paths:
                   description: "コメントの内容"
                 timestamp:
                   type: number
-                  format: float
+                  format: double
                   description: "コメントの投稿時間"
       responses:
         '201':
@@ -165,6 +162,11 @@ components:
     Video:
       type: object
       properties:
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: "動画の作成日時"
         id:
           type: string
           readOnly: true
@@ -173,6 +175,10 @@ components:
           type: string
           readOnly: true
           description: "動画のタイトル"
+        description:
+          type: string
+          readOnly: true
+          description: "動画の説明"
         url:
           type: string
           readOnly: true
@@ -197,10 +203,11 @@ components:
           description: "コメントの内容"
         timestamp:
           type: number
-          format: float
+          format: double
           description: "コメントの投稿時間"
         userId:
-          type: integer
+          type: string
+          readOnly: true
           description: "コメントを投稿したユーザーのID"
         createdAt:
           type: string

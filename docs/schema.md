@@ -11,13 +11,14 @@ erDiagram
 	text video_url
 	datetime created_at
 	int view_count
+	TINYINT status
   }
   comments {
 	int comment_id PK
 	varchar(255) video_id FK
 	varchar(32) user_id FK
 	text comment
-	float timestamp
+	double timestamp
 	datetime created_at
   }
   

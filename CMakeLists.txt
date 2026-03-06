@@ -36,7 +36,8 @@ add_executable(${PROJECT_NAME} src/main.cpp)
 #
 # and comment out the following lines
 find_package(Drogon CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon)
+find_package(AWSSDK REQUIRED COMPONENTS s3)
+target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon ${AWSSDK_LINK_LIBRARIES} zstd)
 
 # ##############################################################################
 
