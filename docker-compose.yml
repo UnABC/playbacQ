@@ -40,11 +40,24 @@ services:
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_NOTIFY_WEBHOOK_ENABLE=on
+      - MINIO_NOTIFY_WEBHOOK_ENDPOINT=http://backend:8080/webhooks/minio
     ports:
       - "9000:9000" # API用
       - "9001:9001" # コンソール用
     volumes:
       - minio_data:/data
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      - minio
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - ./docker/minio/init.sh:/init.sh
+    entrypoint: /bin/sh -c "chmod +x /init.sh && /init.sh"
 volumes:
   db_data:
   redis_data:

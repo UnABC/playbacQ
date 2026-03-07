@@ -150,6 +150,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Comment'
+  /api/videos/{id}/progress:
+    get:
+      summary: "動画のアップロードの進捗の取得"
+      operationId: getVideoProgress
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      responses:
+        '200':
+          description: "動画のアップロードの進捗を返します。"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  progress:
+                    type: number
+                    format: int
+                    description: "動画のアップロードの進捗(0~100)"
+                  status:
+                    type: string
+                    description: "動画のアップロードの状態(pending, processing, completed, failed)"
+        '403':
+          description: "アクセスが拒否されました。"
+        '404':
+          description: "動画が見つかりませんでした。"
+  /webhooks/minio:
+    post:
+      summary: "動画アップロードの通知用"
+      operationId: minioWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
 
 components:
   schemas:
@@ -176,11 +216,19 @@ components:
         url:
           type: string
           readOnly: true
-          description: "動画のURL"
+          description: "動画の公開用URL"
         thumbnailUrl:
           type: string
           readOnly: true
-          description: "動画のサムネイルURL"
+          description: "動画の公開用サムネイルURL"
+        upload_url:
+          type: string
+          readOnly: true
+          description: "動画のアップロード用URL"
+        upload_thumbnail_url:
+          type: string
+          readOnly: true
+          description: "動画のサムネイルアップロード用URL"
         viewCount:
           type: integer
           readOnly: true
