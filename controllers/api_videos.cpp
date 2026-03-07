@@ -10,14 +10,9 @@
 #include "../models/Videos.h"
 #include "../models/Tags.h"
 #include "../plugins/S3Plugin.h"
+#include "Status.h"
 
 using namespace api;
-
-enum class Status {
-	pending,
-	processing,
-	completed
-};
 
 drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 	std::optional<std::string> userId = req->getOptionalParameter<std::string>("userId");

@@ -25,7 +25,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 file(GLOB SRC_DIR src/*.cpp)
-
+# TODO: srcディレクトリを廃止してmainを直下に置く
 add_executable(${PROJECT_NAME} src/main.cpp)
 
 # ##############################################################################
@@ -40,6 +40,13 @@ find_package(AWSSDK REQUIRED COMPONENTS s3)
 target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon ${AWSSDK_LINK_LIBRARIES} zstd)
 
 # ##############################################################################
+
+# for FFmpeg worker
+add_executable(playbacq_worker worker/worker.cpp)
+target_link_libraries(playbacq_worker PRIVATE
+    hiredis
+    # TODO: 後でFFmpegのライブラリもリンクする
+)
 
 if (CMAKE_CXX_STANDARD LESS 17)
     message(FATAL_ERROR "c++17 or higher is required")

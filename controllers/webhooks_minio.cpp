@@ -1,7 +1,78 @@
 #include "webhooks_minio.h"
+#include <drogon/orm/Exception.h>
+#include <drogon/orm/CoroMapper.h>
+#include <drogon/orm/Criteria.h>
+#include <json/json.h>
+#include "../models/Videos.h"
+#include "Status.h"
 
 using namespace webhooks;
 
-drogon::Task<drogon::HttpResponsePtr> minio::asyncHandleHttpRequest(const HttpRequestPtr& req) {
-    // TODO
+//【重要！】：200 OK以外を返すとMinIOが永遠とリトライするため、エラーがあっても200 OK以外は返さないこと！
+drogon::Task<drogon::HttpResponsePtr> minio::asyncHandleHttpRequest(HttpRequestPtr req) {
+    auto jsonPtr = req->getJsonObject();
+    if (!jsonPtr) {
+        std::cerr << "Invalid JSON format in request body" << std::endl;
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+        resp->setBody("Invalid JSON format");
+        co_return resp;
+    }
+    // Records配列の整合性チェック
+    if (!jsonPtr->isMember("Records") || !(*jsonPtr)["Records"].isArray() || (*jsonPtr)["Records"].empty()) {
+        std::cerr << "Missing or invalid 'Records' field in request body" << std::endl;
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+        resp->setBody("Missing or invalid 'Records' field");
+        co_return resp;
+    }
+    for (const auto& record : (*jsonPtr)["Records"]) {
+        if (!record.isMember("eventName") || !record["eventName"].isString()) {
+            std::cerr << "Missing or invalid 'eventName' field in record" << std::endl;
+            continue;
+        }
+        if (!record.isMember("s3") || !record["s3"].isObject()
+            || !record["s3"].isMember("object") || !record["s3"]["object"].isObject()
+            || !record["s3"]["object"].isMember("key") || !record["s3"]["object"]["key"].isString()) {
+            std::cerr << "Missing or invalid 's3.object.key' field in record" << std::endl;
+            continue;
+        }
+        std::string eventName = record.get("eventName", "NULL").asString();
+        std::string videoFileName = record["s3"]["object"].get("key", "NULL").asString();
+        if (eventName == "NULL" || videoFileName == "NULL") {
+            std::cerr << "Invalid " << (eventName == "NULL" ? "eventName" : "key") << " in record" << std::endl;
+            continue;
+        }
+        // 投げられたイベントとVideoIDをキューに積む
+        std::string videoId = videoFileName.substr(0, videoFileName.find_last_of('.'));
+        if (eventName.starts_with("s3:ObjectCreated:")) {
+            drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+            try {
+                // ステータスを更新
+                auto video = co_await mapper.findByPrimaryKey(videoId);
+                video.setStatus((uint8_t)Status::processing);
+                co_await mapper.update(video);
+                // Redisにタスクを積む
+                auto redisClient = drogon::app().getRedisClient();
+                if (redisClient) {
+                    co_await redisClient->execCommandCoro("LPUSH encode_queue %s", videoId.c_str());
+                } else {
+                    std::cerr << "Failed to get Redis client" << std::endl;
+                }
+            }
+            catch (const drogon::orm::DrogonDbException& e) {
+                std::cerr << "DB Error: " << e.base().what() << std::endl;
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+            }
+        } else {
+            // 現時点ではアップロード完了通知以外はエラー扱い。
+            std::cerr << "Unsupported event: " << eventName << std::endl;
+        }
+    }
+    auto resp = drogon::HttpResponse::newHttpResponse();
+    resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+    resp->setBody("Finished processing webhook");
+    co_return resp;
 }
