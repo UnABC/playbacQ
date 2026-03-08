@@ -143,3 +143,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideo([[maybe_unused]] HttpRequ
 		co_return resp;
 	}
 }
+
+drogon::Task<drogon::HttpResponsePtr> videos::getVideoProgress([[maybe_unused]] HttpRequestPtr req, std::string id) {
+	
+}

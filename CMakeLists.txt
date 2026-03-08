@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 project(playbacq CXX)
 
+cmake_policy(SET CMP0167 NEW)
+
 include(CheckIncludeFileCXX)
 
 check_include_file_cxx(any HAS_ANY)
@@ -43,10 +45,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon ${AWSSDK_LINK_LIBRA
 
 # for FFmpeg worker
 add_executable(playbacq_worker worker/worker.cpp)
+find_package(Boost REQUIRED COMPONENTS system filesystem)
 target_link_libraries(playbacq_worker PRIVATE
+    Boost::system
+    Boost::filesystem
     hiredis
+    redis++
+    ${AWSSDK_LINK_LIBRARIES}
+    zstd
     # TODO: 後でFFmpegのライブラリもリンクする
 )
+target_include_directories(playbacq_worker PRIVATE ${Boost_INCLUDE_DIRS})
 
 if (CMAKE_CXX_STANDARD LESS 17)
     message(FATAL_ERROR "c++17 or higher is required")

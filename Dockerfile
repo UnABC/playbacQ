@@ -8,9 +8,18 @@ RUN apt-get update && apt-get install -y \
 	libssl-dev \
 	libjsoncpp-dev \
 	libzstd-dev \
+	libhiredis-dev \
+	libboost-dev \
+	libboost-system-dev \
+	libboost-filesystem-dev \
 	default-libmysqlclient-dev \
 	libcurl4-openssl-dev \
+	ffmpeg \
 	&& rm -rf /var/lib/apt/lists/*
+RUN git clone https://github.com/sewenew/redis-plus-plus.git \
+	&& cd redis-plus-plus \
+	&& mkdir build && cd build \
+	&& cmake .. && make -j$(nproc) && make install
 RUN git clone https://github.com/drogonframework/drogon \
 	&& cd drogon \
 	&& git submodule update --init \
@@ -25,6 +34,7 @@ COPY CMakeLists.txt /app/
 COPY src/ /app/src/
 COPY test/ /app/test/
 COPY models/ /app/models/
+COPY worker/ /app/worker/
 RUN mkdir build && cd build && cmake .. && make -j$(nproc)
 
 FROM gcc:15.2
@@ -32,6 +42,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
 	ca-certificates \
 	libcurl4 \
+	ffmpeg \
 	&& rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /app/build/playbacq /app/playbacq
@@ -40,6 +51,8 @@ COPY --from=builder /usr/lib/x86_64-linux-gnu/libjsoncpp.so* /usr/lib/x86_64-lin
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libbrotli*.so* /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libpq.so* /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libsqlite3.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libhiredis.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libredis++.so* /usr/lib/x86_64-linux-gnu/
 RUN ldconfig
 EXPOSE 8080
 WORKDIR /app

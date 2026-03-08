@@ -17,6 +17,8 @@ void S3Plugin::initAndStart([[maybe_unused]] const Json::Value& config) {
     clientConfig.region = "us-east-1";
     // MinIOのエンドポイント
     clientConfig.endpointOverride = "http://localhost:9000";
+    // HTTPを使用
+    clientConfig.scheme = Aws::Http::Scheme::HTTP;
     s3Client = std::make_shared<Aws::S3::S3Client>(
         credentials,
         clientConfig,

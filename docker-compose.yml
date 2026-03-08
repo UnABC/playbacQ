@@ -16,6 +16,19 @@ services:
     depends_on:
       - db
       - redis
+  worker:
+    build:
+      context: .
+      target: builder
+    volumes:
+      - .:/app
+    command: sleep infinity
+    environment:
+      - REDIS_HOST=redis
+      - MINIO_ENDPOINT=minio:9000
+    depends_on:
+      - redis
+      - minio
   db:
     image: mysql:8.0
     environment:

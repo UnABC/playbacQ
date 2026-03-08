@@ -12,7 +12,7 @@ namespace api
   public:
     METHOD_LIST_BEGIN
       // use METHOD_ADD to add your custom processing function here;
-      ADD_METHOD_TO(videos::getVideos, "/api/videos", Get); // path is /api/videos
+    ADD_METHOD_TO(videos::getVideos, "/api/videos", Get); // path is /api/videos
     ADD_METHOD_TO(videos::postVideos, "/api/videos", Post, "AuthFilter"); // path is /api/videos
     ADD_METHOD_TO(videos::getVideo, "/api/videos/{1}", Get); // path is /api/videos/{id}
     ADD_METHOD_TO(videos::getVideoProgress, "/api/videos/{1}/progress", Get);
