@@ -10,6 +10,7 @@
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/PutObjectRequest.h>
 #include <aws/core/auth/AWSCredentials.h>
+#include <curl/curl.h>
 
 bool upload2MinIO(const std::string& local_file_path, const std::string& bucket_name, const std::string& object_key) {
 	const char* envUser = std::getenv("MINIO_ROOT_USER");
@@ -46,9 +47,45 @@ bool upload2MinIO(const std::string& local_file_path, const std::string& bucket_
 	}
 }
 
+void postEncodeResult(const std::string& videoId, const std::string& status, const std::string& message) {
+	try {
+		std::string payload = "{\"video_id\": \"" + videoId + "\", \"status\": \"" + status + "\", \"message\": \"" + message + "\"}";
+		CURL* curl = curl_easy_init();
+		if (curl) {
+			struct curl_slist* headers = curl_slist_append(NULL, "Content-Type: application/json");
+			curl_easy_setopt(curl, CURLOPT_URL, "http://backend:8080/webhooks/encode_result");
+			curl_easy_setopt(curl, CURLOPT_POST, 1L);
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
+			// サーバーからのレスポンスを標準出力に出さないためのミュート設定
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, +[](void* ptr, size_t size, size_t nmemb, void* userdata) -> size_t {
+				return size * nmemb;
+				});
+
+			CURLcode res = curl_easy_perform(curl);
+
+			if (res != CURLE_OK) {
+				std::cerr << "Webhook failed: " << curl_easy_strerror(res) << std::endl;
+			} else {
+				std::cout << "Sent webhook to Drogon. Status: " << status << std::endl;
+			}
+
+			curl_slist_free_all(headers);
+			curl_easy_cleanup(curl);
+		} else {
+			std::cerr << "Failed to initialize CURL" << std::endl;
+			return;
+		}
+	}
+	catch (const sw::redis::Error& e) {
+		std::cerr << "Redis publish error: " << e.what() << std::endl;
+	}
+}
+
 int main() {
 	Aws::SDKOptions options;
 	Aws::InitAPI(options);
+	curl_global_init(CURL_GLOBAL_ALL);
 	{
 		std::cout << "Starting worker..." << std::endl;
 		try {
@@ -87,12 +124,14 @@ int main() {
 
 						if (total_duration_sec <= 0.0) {
 							std::cerr << "Invalid video duration: " << total_duration_sec << " seconds for video ID: " << video_id << std::endl;
-							//TODO: エラー処理へ
+							postEncodeResult(video_id, "failed", "Invalid video duration");
+							continue;
 						}
 					}
 					catch (const std::exception& e) {
 						std::cerr << "ffprobe error: " << e.what() << std::endl;
-						// TODO: エラー処理へ
+						postEncodeResult(video_id, "failed", "ffprobe error: " + std::string(e.what()));
+						continue;
 					}
 
 					int last_notified_percent = -1;
@@ -125,7 +164,6 @@ int main() {
 									double current_sec = micro_seconds / 1000000.0;
 									int current_percent = std::min(static_cast<int>((current_sec / total_duration_sec) * 100), 100);
 
-									// 前回から1%以上進んでいたらRedisに書き込む
 									if (current_percent > last_notified_percent) {
 										// SET video:progress:{id} {percent} (有効期限24時間)
 										redis.set("video:progress:" + video_id, std::to_string(current_percent), std::chrono::hours(24));
@@ -145,15 +183,14 @@ int main() {
 						} else {
 							std::cerr << "ffmpeg exited with code " << exit_code << " for video ID: " << video_id << std::endl;
 							// エラーが発生した場合はDrogonに失敗を知らせる (Pub/Sub)
-							// redis.publish("encode_events", "{\"video_id\": \"" + video_id + "\", \"status\": \"failed\"}");
-							continue; // 次のジョブへ
+							postEncodeResult(video_id, "failed", "ffmpeg exited with code " + std::to_string(exit_code));
+							continue;
 						}
 					}
 					catch (const std::exception& e) {
 						std::cerr << "Encoding Error: " << e.what() << std::endl;
-						// エラーが発生した場合はDrogonに失敗を知らせる (Pub/Sub)
-						// redis.publish("encode_events", "{\"video_id\": \"" + video_id + "\", \"status\": \"failed\"}");
-						continue; // 次のジョブへ
+						postEncodeResult(video_id, "failed", "Encoding error: " + std::string(e.what()));
+						continue;
 					}
 
 					std::string base_dir = "/tmp/playbacq_encode/" + video_id + "/";
@@ -163,8 +200,7 @@ int main() {
 
 					std::cout << "[JOB COMPLETED] Video ID: " << video_id << std::endl;
 
-					// 終わったらDrogonに完了を知らせる (Pub/Sub)
-					// redis.publish("encode_events", "{\"video_id\": \"" + video_id + "\", \"status\": \"completed\"}");
+					postEncodeResult(video_id, "completed", "Encoding completed successfully");
 				}
 			}
 
@@ -174,6 +210,7 @@ int main() {
 			return 1;
 		}
 	}
+	curl_global_cleanup();
 	Aws::ShutdownAPI(options);
 	return 0;
 }

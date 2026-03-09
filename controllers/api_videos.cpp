@@ -2,6 +2,7 @@
 #include <drogon/orm/Exception.h>
 #include <drogon/orm/CoroMapper.h>
 #include <drogon/orm/Criteria.h>
+#include <drogon/nosql/RedisClient.h>
 #include <json/json.h>
 #include <string>
 #include <optional>
@@ -145,5 +146,64 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideo([[maybe_unused]] HttpRequ
 }
 
 drogon::Task<drogon::HttpResponsePtr> videos::getVideoProgress([[maybe_unused]] HttpRequestPtr req, std::string id) {
-	
+	// Statusの確認
+	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+	Json::Value jsonResponse;
+	try {
+		auto video = co_await mapper.findByPrimaryKey(id);
+		if (*video.getStatus() != (uint8_t)Status::processing) {
+			jsonResponse["progress"] = Json::nullValue;
+			jsonResponse["status"] = *video.getStatus();
+			auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
+			co_return resp;
+		}
+	}
+	catch (const drogon::orm::UnexpectedRows& e) {
+		// NOt found 404
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+		resp->setBody("Video not found");
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "DB Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to retrieve video: " + std::string(e.what()));
+		co_return resp;
+	}
+	// processing中の場合進捗も取得
+	auto redis = drogon::app().getFastRedisClient();
+	if (!redis) {
+		std::cerr << "Failed to get Redis client" << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to get Redis client");
+		co_return resp;
+	}
+	try {
+		auto result = co_await redis->execCommandCoro("GET video:progress:%s", id.c_str());
+		if (!result.isNil()) {
+			std::string progressStr = result.asString();
+			try {
+				jsonResponse["progress"] = std::max(0, std::min(100, std::stoi(progressStr)));
+			}
+			catch (const std::exception& e) {
+				std::cerr << "Invalid progress value in Redis: " << progressStr << std::endl;
+				jsonResponse["progress"] = Json::nullValue;
+			}
+		} else {
+			jsonResponse["progress"] = Json::nullValue;
+		}
+		jsonResponse["status"] = (uint8_t)Status::processing;
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Redis Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to retrieve progress: " + std::string(e.what()));
+		co_return resp;
+	}
 }

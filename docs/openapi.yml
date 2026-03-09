@@ -190,6 +190,26 @@ paths:
           application/json:
             schema:
               type: object
+  /webhooks/encode_result:
+    post:
+      summary: "動画エンコードの完了通知用"
+      operationId: encodeResultWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                videoId:
+                  type: string
+                  description: "動画のID"
+                status:
+                  type: string
+                  description: "エンコードの状態(completed, failed)"
+                message:
+                  type: string
+                  description: "success or error message"
 
 components:
   schemas:

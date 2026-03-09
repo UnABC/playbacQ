@@ -76,3 +76,44 @@ drogon::Task<drogon::HttpResponsePtr> minio::asyncHandleHttpRequest(HttpRequestP
     resp->setBody("Finished processing webhook");
     co_return resp;
 }
+
+drogon::Task<drogon::HttpResponsePtr> minio::receiveEncodeResult(HttpRequestPtr req) {
+    auto jsonPtr = req->getJsonObject();
+    if (!jsonPtr) {
+        std::cerr << "Invalid JSON format in request body" << std::endl;
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+        resp->setBody("Invalid JSON format");
+        co_return resp;
+    }
+    if (!jsonPtr->isMember("video_id") || !jsonPtr->isMember("status") || !jsonPtr->isMember("message")
+        || !(*jsonPtr)["video_id"].isString() || !(*jsonPtr)["status"].isString() || !(*jsonPtr)["message"].isString()) {
+        std::cerr << "Missing or invalid 'video_id' or 'status' or 'message' field in request body" << std::endl;
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+        resp->setBody("Missing or invalid 'video_id' or 'status' or 'message' field");
+        co_return resp;
+    }
+    std::string videoId = (*jsonPtr)["video_id"].asString();
+    std::string status = (*jsonPtr)["status"].asString();
+    std::string message = (*jsonPtr)["message"].asString();
+    if (status == "completed" || status == "failed") {
+        drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+        try {
+            auto video = co_await mapper.findByPrimaryKey(videoId);
+            video.setStatus((uint8_t)(status == "completed" ? Status::completed : Status::failed));
+            co_await mapper.update(video);
+        }
+        catch (const drogon::orm::DrogonDbException& e) {
+            std::cerr << "DB Error: " << e.base().what() << std::endl;
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+        }
+    } else {
+        std::cerr << "Unsupported status: " << status << std::endl;
+    }
+    std::cerr << "Received encode result for video ID: " << videoId << ", status: " << status << ", message: " << message << std::endl;
+    auto resp = drogon::HttpResponse::newHttpResponse();
+    resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+}

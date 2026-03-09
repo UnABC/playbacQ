@@ -31,7 +31,7 @@ RUN git clone --recurse-submodules --depth 1 https://github.com/aws/aws-sdk-cpp.
 	&& make -j$(nproc) && make install
 WORKDIR /app
 COPY CMakeLists.txt /app/
-COPY src/ /app/src/
+COPY *.cpp /app/
 COPY test/ /app/test/
 COPY models/ /app/models/
 COPY worker/ /app/worker/

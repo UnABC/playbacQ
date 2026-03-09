@@ -55,6 +55,7 @@ services:
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
       - MINIO_NOTIFY_WEBHOOK_ENABLE=on
       - MINIO_NOTIFY_WEBHOOK_ENDPOINT=http://backend:8080/webhooks/minio
+      - MINIO_API_CORS_ALLOW_ORIGIN=http://localhost:4200
     ports:
       - "9000:9000" # API用
       - "9001:9001" # コンソール用

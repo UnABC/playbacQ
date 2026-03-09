@@ -26,9 +26,8 @@ endif ()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-file(GLOB SRC_DIR src/*.cpp)
-# TODO: srcディレクトリを廃止してmainを直下に置く
-add_executable(${PROJECT_NAME} src/main.cpp)
+file(GLOB SRC_DIR *.cpp)
+add_executable(${PROJECT_NAME} main.cpp)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method
@@ -46,6 +45,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon ${AWSSDK_LINK_LIBRA
 # for FFmpeg worker
 add_executable(playbacq_worker worker/worker.cpp)
 find_package(Boost REQUIRED COMPONENTS system filesystem)
+find_package(CURL REQUIRED)
 target_link_libraries(playbacq_worker PRIVATE
     Boost::system
     Boost::filesystem
@@ -53,7 +53,7 @@ target_link_libraries(playbacq_worker PRIVATE
     redis++
     ${AWSSDK_LINK_LIBRARIES}
     zstd
-    # TODO: 後でFFmpegのライブラリもリンクする
+    CURL::libcurl
 )
 target_include_directories(playbacq_worker PRIVATE ${Boost_INCLUDE_DIRS})
 

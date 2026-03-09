@@ -11,7 +11,9 @@ namespace webhooks
   public:
     METHOD_LIST_BEGIN
       ADD_METHOD_TO(minio::asyncHandleHttpRequest, "/webhooks/minio", Post);
+      ADD_METHOD_TO(minio::receiveEncodeResult, "/webhooks/encode_result", Post);
     METHOD_LIST_END
       drogon::Task<drogon::HttpResponsePtr> asyncHandleHttpRequest(HttpRequestPtr req);
+      drogon::Task<drogon::HttpResponsePtr> receiveEncodeResult(HttpRequestPtr req);
   };
 }
