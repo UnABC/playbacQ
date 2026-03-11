@@ -12,6 +12,8 @@ echo "Successfully connected to MinIO. Creating buckets and configuring events..
 mc mb myminio/videos --ignore-existing
 mc mb myminio/videofiles --ignore-existing
 
+mc anonymous set download myminio/videofiles
+
 # バケットのイベント通知を設定 (ARNのIDはMINIO_NOTIFY_WEBHOOK_ENABLE_1の"1"と一致させる)
 mc event add myminio/videofiles arn:minio:sqs::1:webhook --event put
 

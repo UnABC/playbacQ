@@ -347,8 +347,7 @@
         {
             "name": "default",
             "host": "redis",
-            "port": 6379,
-            "is_fast": true
+            "port": 6379
         }
     ],
     //custom_config: custom configuration for users. This object can be get by the app().getCustomConfig() method. 

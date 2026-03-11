@@ -114,7 +114,8 @@ drogon::Task<drogon::HttpResponsePtr> minio::receiveEncodeResult(HttpRequestPtr 
     } else {
         std::cerr << "Unsupported status: " << status << std::endl;
     }
-    std::cerr << "Received encode result for video ID: " << videoId << ", status: " << status << ", message: " << message << std::endl;
+    std::cout << "Received encode result for video ID: " << videoId << ", status: " << status << ", message: " << message << std::endl;
     auto resp = drogon::HttpResponse::newHttpResponse();
     resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+    co_return resp;
 }

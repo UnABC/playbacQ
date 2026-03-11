@@ -9,6 +9,7 @@
 #include <aws/core/Aws.h>
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/PutObjectRequest.h>
+#include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/core/auth/AWSCredentials.h>
 #include <curl/curl.h>
 
@@ -82,6 +83,32 @@ void postEncodeResult(const std::string& videoId, const std::string& status, con
 	}
 }
 
+bool deleteFromMinIO(const std::string& bucket_name, const std::string& object_key) {
+	const char* envUser = std::getenv("MINIO_ROOT_USER");
+	const char* envPassword = std::getenv("MINIO_ROOT_PASSWORD");
+	const std::string accessKey = envUser ? envUser : "";
+	const std::string secretKey = envPassword ? envPassword : "";
+	Aws::Auth::AWSCredentials credentials(accessKey.c_str(), secretKey.c_str());
+	Aws::Client::ClientConfiguration clientConfig;
+	clientConfig.endpointOverride = "http://minio:9000";
+	clientConfig.region = "us-east-1";
+	clientConfig.scheme = Aws::Http::Scheme::HTTP;
+	Aws::S3::S3Client s3_client(credentials, clientConfig, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
+
+	Aws::S3::Model::DeleteObjectRequest request;
+	request.SetBucket(bucket_name);
+	request.SetKey(object_key);
+
+	auto outcome = s3_client.DeleteObject(request);
+	if (outcome.IsSuccess()) {
+		std::cout << "Successfully deleted original file: " << object_key << std::endl;
+		return true;
+	} else {
+		std::cerr << "Delete failed: " << outcome.GetError().GetMessage() << std::endl;
+		return false;
+	}
+}
+
 int main() {
 	Aws::SDKOptions options;
 	Aws::InitAPI(options);
@@ -105,7 +132,7 @@ int main() {
 				if (item) {
 					std::string video_id = item->second;
 					std::cout << "\n[JOB RECEIVED] Video ID: " << video_id << std::endl;
-					std::string video_url = "http://minio:9000/videos/" + video_id + ".mp4";
+					std::string video_url = "http://minio:9000/videofiles/" + video_id + ".mp4";
 
 					// 動画の総時間をffprobeで取得
 					double total_duration_sec = 0.0;
@@ -141,16 +168,19 @@ int main() {
 						if (ffmpeg_path.empty()) {
 							throw std::runtime_error("ffmpeg not found in PATH");
 						}
+						std::string base_dir = "/tmp/playbacq_encode/" + video_id + "/";
+						std::filesystem::create_directories(base_dir);
+
 						boost::process::ipstream output_stream;
 						std::vector<std::string> args = {
-							"-i", "http://minio:9000/videos/" + video_id + ".mp4",
+							"-i", "http://minio:9000/videofiles/" + video_id + ".mp4",
 							"-progress", "pipe:1",
 							"-c:v", "libx264",
 							"-f", "hls",
 							"-hls_time", "2",	// セグメントの長さを2秒に設定
 							"-hls_segment_type", "fmp4",
 							"-hls_flags", "single_file",
-							"/tmp/playbacq_encode/" + video_id + "/output.m3u8"
+							base_dir + "/output.m3u8"
 						};
 						std::cout << "Starting ffmpeg process for video ID: " << video_id << std::endl;
 						boost::process::child ffmpeg_process(ffmpeg_path, boost::process::args(args), boost::process::std_out > output_stream, boost::process::std_err > boost::process::null);
@@ -194,9 +224,11 @@ int main() {
 					}
 
 					std::string base_dir = "/tmp/playbacq_encode/" + video_id + "/";
-					upload2MinIO(base_dir + "output.mp4", "playbacq-videos", "hls/" + video_id + "/output.mp4");
-					upload2MinIO(base_dir + "output.m3u8", "playbacq-videos", "hls/" + video_id + "/output.m3u8");
+					upload2MinIO(base_dir + "output.mp4", "videos", "hls/" + video_id + "/output.mp4");
+					upload2MinIO(base_dir + "output.m3u8", "videos", "hls/" + video_id + "/output.m3u8");
 					std::filesystem::remove_all("/tmp/playbacq_encode/" + video_id);
+
+					deleteFromMinIO("videofiles", video_id + ".mp4");
 
 					std::cout << "[JOB COMPLETED] Video ID: " << video_id << std::endl;
 

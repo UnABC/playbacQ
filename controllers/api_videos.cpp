@@ -131,7 +131,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideo([[maybe_unused]] HttpRequ
 		co_return resp;
 	}
 	catch (const drogon::orm::UnexpectedRows& e) {
-		// NOt found 404
+		// Not found 404
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
 		resp->setBody("Video not found");
@@ -161,7 +161,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideoProgress([[maybe_unused]] 
 		}
 	}
 	catch (const drogon::orm::UnexpectedRows& e) {
-		// NOt found 404
+		// Not found 404
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
 		resp->setBody("Video not found");
@@ -175,7 +175,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideoProgress([[maybe_unused]] 
 		co_return resp;
 	}
 	// processing中の場合進捗も取得
-	auto redis = drogon::app().getFastRedisClient();
+	auto redis = drogon::app().getRedisClient();
 	if (!redis) {
 		std::cerr << "Failed to get Redis client" << std::endl;
 		auto resp = drogon::HttpResponse::newHttpResponse();
