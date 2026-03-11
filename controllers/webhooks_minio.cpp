@@ -11,6 +11,7 @@ using namespace webhooks;
 //【重要！】：200 OK以外を返すとMinIOが永遠とリトライするため、エラーがあっても200 OK以外は返さないこと！
 drogon::Task<drogon::HttpResponsePtr> minio::asyncHandleHttpRequest(HttpRequestPtr req) {
     auto jsonPtr = req->getJsonObject();
+    std::cout << "Start processing MinIO webhook" << std::endl;
     if (!jsonPtr) {
         std::cerr << "Invalid JSON format in request body" << std::endl;
         auto resp = drogon::HttpResponse::newHttpResponse();

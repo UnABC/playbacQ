@@ -1,4 +1,5 @@
 #include <drogon/drogon.h>
+#include <filesystem>
 
 int main() {
     //Set HTTP listener address and port
@@ -18,7 +19,7 @@ int main() {
         });
 
     // CORS: すべてのレスポンスにCORSヘッダを付与
-    drogon::app().registerPostHandlingAdvice([](const drogon::HttpRequestPtr& req, const drogon::HttpResponsePtr& resp) {
+    drogon::app().registerPostHandlingAdvice([]([[maybe_unused]]const drogon::HttpRequestPtr& req, const drogon::HttpResponsePtr& resp) {
         // フロントエンドのurlを許可
         resp->addHeader("Access-Control-Allow-Origin", "http://localhost:4200");
         // 許可するHTTPメソッド

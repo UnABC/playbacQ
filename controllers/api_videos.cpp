@@ -7,6 +7,7 @@
 #include <string>
 #include <optional>
 #include <iostream>
+#include <cstdlib>
 #include <regex>
 #include "../models/Videos.h"
 #include "../models/Tags.h"
@@ -147,6 +148,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideo([[maybe_unused]] HttpRequ
 
 drogon::Task<drogon::HttpResponsePtr> videos::getVideoProgress([[maybe_unused]] HttpRequestPtr req, std::string id) {
 	// Statusの確認
+	std::cout << "Checking progress for video ID: " << id << std::endl;
 	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 	Json::Value jsonResponse;
 	try {

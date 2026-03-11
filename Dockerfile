@@ -29,12 +29,22 @@ RUN git clone --recurse-submodules --depth 1 https://github.com/aws/aws-sdk-cpp.
 	&& mkdir build && cd build \
 	&& cmake .. -DBUILD_ONLY="s3" -DBUILD_SHARED_LIBS=OFF -DENABLE_TESTING=OFF -DCMAKE_BUILD_TYPE=Release \
 	&& make -j$(nproc) && make install
+
+# Register system libraries in builder
+RUN ldconfig
+
 WORKDIR /app
 COPY CMakeLists.txt /app/
 COPY *.cpp /app/
 COPY test/ /app/test/
 COPY models/ /app/models/
+COPY controllers/ /app/controllers/
+COPY filters/ /app/filters/
+COPY plugins/ /app/plugins/
+COPY views/ /app/views/
 COPY worker/ /app/worker/
+COPY docker/ /app/docker/
+COPY config.json config.yaml /app/
 RUN mkdir build && cd build && cmake .. && make -j$(nproc)
 
 FROM gcc:15.2
@@ -43,19 +53,26 @@ RUN apt-get update && apt-get install -y \
 	ca-certificates \
 	libcurl4 \
 	ffmpeg \
+	libhiredis1.1.0 \
 	&& rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY --from=builder /app/build/playbacq /app/playbacq
+
+# Copy all built libraries from builder
 COPY --from=builder /usr/local/lib /usr/local/lib
+
+# Copy necessary system libraries from builder
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libjsoncpp.so* /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libbrotli*.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libpq.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libsqlite3.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libhiredis.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libredis++.so* /usr/lib/x86_64-linux-gnu/
+
+# Register libraries in runtime cache
 RUN ldconfig
-EXPOSE 8080
+
 WORKDIR /app
+
+# Copy both executables and make them available
 COPY --from=builder /app/build/playbacq /usr/local/bin/playbacq
-RUN chmod +x /usr/local/bin/playbacq && ldconfig
+COPY --from=builder /app/build/playbacq_worker /usr/local/bin/playbacq_worker
+RUN chmod +x /usr/local/bin/playbacq /usr/local/bin/playbacq_worker
+
+EXPOSE 8080
+
 CMD ["/usr/local/bin/playbacq"]

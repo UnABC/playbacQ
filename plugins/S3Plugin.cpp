@@ -15,8 +15,8 @@ void S3Plugin::initAndStart([[maybe_unused]] const Json::Value& config) {
     Aws::Client::ClientConfiguration clientConfig;
     // ダミーリージョン
     clientConfig.region = "us-east-1";
-    // MinIOのエンドポイント
-    clientConfig.endpointOverride = "http://localhost:9000";
+    // MinIOのエンドポイント(localhostだとIP v6の問題上バグるので127.0.0.1を使用)
+    clientConfig.endpointOverride = "http://127.0.0.1:9000";
     // HTTPを使用
     clientConfig.scheme = Aws::Http::Scheme::HTTP;
     s3Client = std::make_shared<Aws::S3::S3Client>(
@@ -38,10 +38,15 @@ std::string S3Plugin::genPresignedUrl(const std::string& videoId, const std::str
     }
     // 有効期限は15分
     long long expirationSeconds = 900;
+
+    Aws::Http::HeaderValueCollection customHeaders;
+    customHeaders.emplace("content-type", "video/mp4");
+
     Aws::String presignedUrl = s3Client->GeneratePresignedUrl(
         bucket,
         videoId,
         Aws::Http::HttpMethod::HTTP_PUT,
+        customHeaders,
         expirationSeconds
     );
     return std::string(presignedUrl.c_str());
