@@ -180,7 +180,10 @@ int main() {
 							"-hls_time", "2",	// セグメントの長さを2秒に設定
 							"-hls_segment_type", "fmp4",
 							"-hls_flags", "single_file",
-							base_dir + "/output.m3u8"
+							// ---ストリーミング再生ならここまでで良い。---
+							"-hls_playlist_type", "vod",
+							"-hls_list_size", "0",
+							base_dir + "output.m3u8"
 						};
 						std::cout << "Starting ffmpeg process for video ID: " << video_id << std::endl;
 						boost::process::child ffmpeg_process(ffmpeg_path, boost::process::args(args), boost::process::std_out > output_stream, boost::process::std_err > boost::process::null);
@@ -224,7 +227,7 @@ int main() {
 					}
 
 					std::string base_dir = "/tmp/playbacq_encode/" + video_id + "/";
-					upload2MinIO(base_dir + "output.mp4", "videos", "hls/" + video_id + "/output.mp4");
+					upload2MinIO(base_dir + "output.m4s", "videos", "hls/" + video_id + "/output.m4s");
 					upload2MinIO(base_dir + "output.m3u8", "videos", "hls/" + video_id + "/output.m3u8");
 					std::filesystem::remove_all("/tmp/playbacq_encode/" + video_id);
 
