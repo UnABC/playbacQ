@@ -37,7 +37,7 @@ std::string S3Plugin::genPresignedUrl(const std::string& videoId, const std::str
         throw std::runtime_error("S3 client is not initialized");
     }
     // 有効期限は15分
-    long long expirationSeconds = 900;
+    const long long expirationSeconds = 900;
 
     Aws::Http::HeaderValueCollection customHeaders;
     customHeaders.emplace("content-type", "video/mp4");
@@ -47,6 +47,21 @@ std::string S3Plugin::genPresignedUrl(const std::string& videoId, const std::str
         videoId,
         Aws::Http::HttpMethod::HTTP_PUT,
         customHeaders,
+        expirationSeconds
+    );
+    return std::string(presignedUrl.c_str());
+}
+
+std::string S3Plugin::genPresignedGetUrl(const std::string& videoId, const long long expirationSeconds, const std::string bucket) {
+    if (!s3Client) {
+        throw std::runtime_error("S3 client is not initialized");
+    }
+
+    Aws::String presignedUrl = s3Client->GeneratePresignedUrl(
+        bucket,
+        videoId,
+        Aws::Http::HttpMethod::HTTP_GET,
+        Aws::Http::HeaderValueCollection(),
         expirationSeconds
     );
     return std::string(presignedUrl.c_str());

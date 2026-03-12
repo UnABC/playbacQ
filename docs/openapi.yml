@@ -180,6 +180,30 @@ paths:
           description: "アクセスが拒否されました。"
         '404':
           description: "動画が見つかりませんでした。"
+  /api/videos/{id}/play:
+    get:
+      summary: "署名付きurlを含む.m3u8ファイルの取得"
+      operationId: getVideoPlayUrl
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      responses:
+        '200':
+          description: "署名付きurlを含む.m3u8ファイルを返します。"
+          content:
+            application/vnd.apple.mpegurl:
+              schema:
+                type: string
+                description: "署名付きurlを含む.m3u8ファイルの内容"
+        '403':
+          description: "アクセスが拒否されました。"
+        '404':
+          description: "動画が見つかりませんでした。"
+
   /webhooks/minio:
     post:
       summary: "動画アップロードの通知用"

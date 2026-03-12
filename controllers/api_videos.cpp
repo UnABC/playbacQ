@@ -9,6 +9,9 @@
 #include <iostream>
 #include <cstdlib>
 #include <regex>
+#include <format>
+#include <ranges>
+#include <string_view>
 #include "../models/Videos.h"
 #include "../models/Tags.h"
 #include "../plugins/S3Plugin.h"
@@ -206,6 +209,86 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideoProgress([[maybe_unused]] 
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
 		resp->setBody("Failed to retrieve progress: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::getVideoPlayM3u8([[maybe_unused]] HttpRequestPtr req, std::string id) {
+	// 動画URLの確認
+	std::cout << "Checking play URL for video ID: " << id << std::endl;
+	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+	Json::Value jsonResponse;
+	try {
+		auto video = co_await mapper.findByPrimaryKey(id);
+		if (*video.getStatus() != (uint8_t)Status::completed) {
+			jsonResponse["playUrl"] = Json::nullValue;
+			jsonResponse["status"] = *video.getStatus();
+			auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
+			co_return resp;
+		}
+		auto s3Plugin = drogon::app().getPlugin<S3Plugin>();
+		std::string base_path = "hls/" + id + "/";
+		// 5秒間有効なURLを生成
+		std::string m3u8_fetch_url = s3Plugin->genPresignedGetUrl(base_path + "output.m3u8", 5);
+		// m3u8ファイルを取得
+		auto client = drogon::HttpClient::newHttpClient("http://127.0.0.1:9000");
+		auto req_minio = drogon::HttpRequest::newHttpRequest();
+		// presigned URLはフルパスで返ってくるので、そこからパス部分だけを抜き取る
+		req_minio->setPath(m3u8_fetch_url.substr(m3u8_fetch_url.find("/videos/")));
+		req_minio->setMethod(drogon::Get);
+		auto resp_minio = co_await client->sendRequestCoro(req_minio);
+		if (resp_minio->getStatusCode() != drogon::k200OK) {
+			throw std::runtime_error("Failed to fetch m3u8 from MinIO");
+		}
+		// m3u8ファイルの生データ
+		std::string original_m3u8 = std::string(resp_minio->getBody());
+
+		std::string rewritten_m3u8;
+		for (const auto& line_range : original_m3u8 | std::views::split('\n')) {
+			std::string_view line(line_range.begin(), line_range.end());
+			// Windowsの改行コードに対応するため、行末の'\r'を削除
+			if (!line.empty() && line.back() == '\r') {
+				line.remove_suffix(1);
+			}
+			if (line.empty()) continue;
+			// 署名付きURLに書き換える
+			if (line.starts_with("#EXT-X-MAP:URI=\"")) {
+				auto uri_start = line.find("\"") + 1;
+				auto uri_end = line.rfind("\"");
+				if (uri_start != std::string_view::npos && uri_end != std::string_view::npos) {
+					std::string_view filename{ line.substr(uri_start, uri_end - uri_start) };
+					rewritten_m3u8 += std::format("#EXT-X-MAP:URI=\"{}\"\n", s3Plugin->genPresignedGetUrl(base_path + std::string(filename)));
+				} else {
+					std::cerr << "Invalid EXT-X-MAP line in m3u8: " << line << std::endl;
+					rewritten_m3u8 += std::string(line) + "\n";
+				}
+
+			} else if (line.starts_with("#")) {
+				rewritten_m3u8 += std::string(line) + "\n";
+			} else {
+				rewritten_m3u8 += s3Plugin->genPresignedGetUrl(base_path + std::string(line)) + "\n";
+			}
+		}
+
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setBody(rewritten_m3u8);
+		resp->setContentTypeCode(drogon::CT_CUSTOM);
+		resp->setContentTypeString("application/vnd.apple.mpegurl");
+
+		co_return resp;
+	}
+	catch (const drogon::orm::UnexpectedRows& e) {
+		// Not found 404
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+		resp->setBody("Video not found");
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "DB Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to retrieve video: " + std::string(e.what()));
 		co_return resp;
 	}
 }
