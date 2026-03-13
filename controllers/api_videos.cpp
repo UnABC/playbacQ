@@ -281,3 +281,57 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideoPlayM3u8([[maybe_unused]] 
 		co_return resp;
 	}
 }
+
+drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnails([[maybe_unused]] HttpRequestPtr req, std::string id, std::string filename) {
+	// サムネイル画像へリダイレクト
+	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+	try {
+		auto s3Plugin = drogon::app().getPlugin<S3Plugin>();
+		std::string presigned_url = s3Plugin->genPresignedGetUrl("hls/" + id + "/" + filename, 60);
+
+		auto resp = drogon::HttpResponse::newRedirectionResponse(presigned_url);
+		co_return resp;
+	}
+	catch (const drogon::orm::UnexpectedRows& e) {
+		// Not found 404
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+		resp->setBody("Video not found");
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Failed to fetch thumbnail from MinIO: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to fetch thumbnail from MinIO: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnailVtt([[maybe_unused]] HttpRequestPtr req, std::string id) {
+	// WebVTTファイルを取得
+	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+	try {
+		auto s3Plugin = drogon::app().getPlugin<S3Plugin>();
+		std::string webVTT = s3Plugin->getObject("hls/" + id + "/thumbnails.vtt");
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setBody(webVTT);
+		resp->setContentTypeCode(drogon::CT_CUSTOM);
+		resp->setContentTypeString("text/vtt");
+		co_return resp;
+	}
+	catch (const drogon::orm::UnexpectedRows& e) {
+		// Not found 404
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+		resp->setBody("Video not found");
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Failed to fetch thumbnail VTT from MinIO: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to fetch thumbnail VTT from MinIO: " + std::string(e.what()));
+		co_return resp;
+	}
+}

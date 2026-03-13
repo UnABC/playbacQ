@@ -19,7 +19,7 @@ public:
   void initAndStart(const Json::Value& config) override;
   void shutdown() override;
   std::string genPresignedUrl(const std::string& videoId, const std::string bucket = "videofiles");
-  std::string genPresignedGetUrl(const std::string& videoId, const long long expirationSeconds = 900, const std::string bucket = "videos");
+  std::string genPresignedGetUrl(const std::string& videoPath, const long long expirationSeconds = 900, const std::string bucket = "videos");
   std::string getObject(const std::string& key, const std::string bucket = "videos");
 };
 

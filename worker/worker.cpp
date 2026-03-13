@@ -109,6 +109,13 @@ bool deleteFromMinIO(const std::string& bucket_name, const std::string& object_k
 	}
 }
 
+std::string formatTime(int total_seconds) {
+	int hours = total_seconds / 3600;
+	int minutes = (total_seconds % 3600) / 60;
+	int seconds = total_seconds % 60;
+	return std::format("{:02}:{:02}:{:02}.000", hours, minutes, seconds);
+}
+
 int main() {
 	Aws::SDKOptions options;
 	Aws::InitAPI(options);
@@ -162,20 +169,29 @@ int main() {
 					}
 
 					int last_notified_percent = -1;
+					std::string base_dir = "/tmp/playbacq_encode/" + video_id + "/";
+					int interval = 10; // サムネイルを10秒ごとに生成
+					if (total_duration_sec < 600) {
+						interval = 2; // 10分未満の動画は2秒ごとにサムネイルを生成
+					} else if (total_duration_sec < 3600) {
+						interval = 5; // 1時間未満の動画は5秒ごとにサムネイルを生成
+					}
 					// エンコード処理
 					try {
 						auto ffmpeg_path = boost::process::search_path("ffmpeg");
 						if (ffmpeg_path.empty()) {
 							throw std::runtime_error("ffmpeg not found in PATH");
 						}
-						std::string base_dir = "/tmp/playbacq_encode/" + video_id + "/";
 						std::filesystem::create_directories(base_dir);
 
 						boost::process::ipstream output_stream;
 						std::vector<std::string> args = {
 							"-i", "http://minio:9000/videofiles/" + video_id + ".mp4",
 							"-progress", "pipe:1",
+							"-vf", "scale='trunc(min(1920,iw)/2)*2':'trunc(min(1080,ih)/2)*2':force_original_aspect_ratio=decrease,pad='ceil(max(iw,ih*(16/9))/2)*2':'ceil(max(ih,iw*(9/16))/2)*2':(ow-iw)/2:(oh-ih)/2:black",
 							"-c:v", "libx264",
+							"-g", "60",
+							"-sc_threshold", "0",
 							"-f", "hls",
 							"-hls_time", "2",	// セグメントの長さを2秒に設定
 							"-hls_segment_type", "fmp4",
@@ -183,7 +199,7 @@ int main() {
 							// ---ストリーミング再生ならここまでで良い。---
 							"-hls_playlist_type", "vod",
 							"-hls_list_size", "0",
-							base_dir + "output.m3u8"
+							base_dir + "output.m3u8",
 						};
 						std::cout << "Starting ffmpeg process for video ID: " << video_id << std::endl;
 						boost::process::child ffmpeg_process(ffmpeg_path, boost::process::args(args), boost::process::std_out > output_stream, boost::process::std_err > boost::process::null);
@@ -219,16 +235,54 @@ int main() {
 							postEncodeResult(video_id, "failed", "ffmpeg exited with code " + std::to_string(exit_code));
 							continue;
 						}
+
+						std::vector<std::string> thumb_args = {
+							"-i", "http://minio:9000/videofiles/" + video_id + ".mp4",
+							"-vf", std::format("fps=1/{},scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2:black,tile=10x10", interval),
+							"-q:v", "2",
+							base_dir + "thumbnail%03d.jpg"
+						};
+						boost::process::child ffmpeg_thumb(ffmpeg_path, boost::process::args(thumb_args), boost::process::std_out > boost::process::null, boost::process::std_err > boost::process::null);
+						ffmpeg_thumb.wait();
 					}
 					catch (const std::exception& e) {
 						std::cerr << "Encoding Error: " << e.what() << std::endl;
 						postEncodeResult(video_id, "failed", "Encoding error: " + std::string(e.what()));
 						continue;
 					}
+					// WebTTファイルの生成
+					std::ofstream vtt_file(base_dir + "thumbnails.vtt");
+					vtt_file << "WEBVTT\n\n";
+					int total_thumbnails = static_cast<int>(total_duration_sec / static_cast<double>(interval)) + 1;
+					constexpr int images_per_sheet = 10 * 10;
+					const int w = 160, h = 90;
+					std::string api_path = "/api/videos/" + video_id + "/thumbnails/";
+					for (int i = 0; i < total_thumbnails; ++i) {
+						int sheet_index = (i / images_per_sheet) + 1;
+						std::string image_name = std::format("thumbnail{:03d}.jpg", sheet_index);
+						std::string start_time = formatTime(i * interval);
+						std::string end_time = formatTime((i + 1) * interval);
 
-					std::string base_dir = "/tmp/playbacq_encode/" + video_id + "/";
+						int index_in_sheet = i % images_per_sheet;
+						int col = index_in_sheet % 10;
+						int row = index_in_sheet / 10;
+
+						int x = col * 160;
+						int y = row * 90;
+
+						vtt_file << start_time << " --> " << end_time << "\n";
+						vtt_file << api_path << image_name << "#xywh=" << x << "," << y << "," << w << "," << h << "\n\n";
+					}
+					vtt_file.close();
 					upload2MinIO(base_dir + "output.m4s", "videos", "hls/" + video_id + "/output.m4s");
 					upload2MinIO(base_dir + "output.m3u8", "videos", "hls/" + video_id + "/output.m3u8");
+					for (int i = 1; i <= (total_thumbnails / images_per_sheet) + 1; ++i) {
+						std::string local_image_path = base_dir + std::format("thumbnail{:03d}.jpg", i);
+						if (std::filesystem::exists(local_image_path)) {
+							upload2MinIO(local_image_path, "videos", "hls/" + video_id + std::format("/thumbnail{:03d}.jpg", i));
+						}
+					}
+					upload2MinIO(base_dir + "thumbnails.vtt", "videos", "hls/" + video_id + "/thumbnails.vtt");
 					std::filesystem::remove_all("/tmp/playbacq_encode/" + video_id);
 
 					deleteFromMinIO("videofiles", video_id + ".mp4");

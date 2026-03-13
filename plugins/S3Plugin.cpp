@@ -68,14 +68,14 @@ std::string S3Plugin::genPresignedUrl(const std::string& videoId, const std::str
     return std::string(presignedUrl.c_str());
 }
 
-std::string S3Plugin::genPresignedGetUrl(const std::string& videoId, const long long expirationSeconds, const std::string bucket) {
+std::string S3Plugin::genPresignedGetUrl(const std::string& videoPath, const long long expirationSeconds, const std::string bucket) {
     if (!s3Client) {
         throw std::runtime_error("S3 client is not initialized");
     }
 
     Aws::String presignedUrl = s3Client->GeneratePresignedUrl(
         bucket,
-        videoId,
+        videoPath,
         Aws::Http::HttpMethod::HTTP_GET,
         Aws::Http::HeaderValueCollection(),
         expirationSeconds
