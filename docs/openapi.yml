@@ -143,6 +143,9 @@ paths:
                   type: number
                   format: double
                   description: "コメントの投稿時間"
+                option:
+                  type: string
+                  description: "コメントのオプション(Json文字列)"
       responses:
         '201':
           description: "コメントが作成されました。"
@@ -371,6 +374,10 @@ components:
           type: string
           readOnly: true
           description: "コメントを投稿したユーザーのID"
+        option:
+          type: string
+          readOnly: true
+          description: "コメントのオプション(Json文字列)"
         createdAt:
           type: string
           format: date-time

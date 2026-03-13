@@ -7,7 +7,7 @@
 
 using namespace api;
 
-drogon::Task<drogon::HttpResponsePtr> comments::getVideo([[maybe_unused]] HttpRequestPtr req, std::string videoId) {
+drogon::Task<drogon::HttpResponsePtr> comments::getComments([[maybe_unused]] HttpRequestPtr req, std::string videoId) {
     drogon::orm::CoroMapper<drogon_model::playbacq::Comments> mapper(drogon::app().getDbClient());
     drogon::orm::Criteria criteria;
     criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Comments::Cols::_video_id, drogon::orm::CompareOperator::EQ, videoId);
@@ -34,7 +34,7 @@ drogon::Task<drogon::HttpResponsePtr> comments::getVideo([[maybe_unused]] HttpRe
     }
 }
 
-drogon::Task<drogon::HttpResponsePtr> comments::postVideo([[maybe_unused]] HttpRequestPtr req, std::string videoId) {
+drogon::Task<drogon::HttpResponsePtr> comments::postComment([[maybe_unused]] HttpRequestPtr req, std::string videoId) {
     auto jsonPtr = req->getJsonObject();
     if (!jsonPtr) {
         auto resp = drogon::HttpResponse::newHttpResponse();
@@ -49,6 +49,7 @@ drogon::Task<drogon::HttpResponsePtr> comments::postVideo([[maybe_unused]] HttpR
         newComment.setUserId(req->getAttributes()->get<std::string>("userId"));
         newComment.setCreatedAt(trantor::Date::now());
         newComment.setTimestamp(jsonPtr->get("timestamp", 0.0).asDouble());
+        newComment.setOption(jsonPtr->get("option", "").asString());
 
         drogon::orm::CoroMapper<drogon_model::playbacq::Comments> mapper(drogon::app().getDbClient());
         auto insertedComment = co_await mapper.insert(newComment);
