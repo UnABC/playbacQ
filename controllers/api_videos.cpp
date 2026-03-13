@@ -282,6 +282,68 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideoPlayM3u8([[maybe_unused]] 
 	}
 }
 
+drogon::Task<drogon::HttpResponsePtr> videos::incrementVideoViews([[maybe_unused]] HttpRequestPtr req, std::string id) {
+	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+	try {
+		auto video = co_await mapper.findByPrimaryKey(id);
+		if (*video.getStatus() != (uint8_t)Status::completed) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+			resp->setBody("Video is not available for viewing");
+			co_return resp;
+		}
+		std::string video_id = *video.getVideoId();
+		std::string client_ip = req->getHeader("X-Real-IP");
+		if (!client_ip.empty()) {
+			auto pos = client_ip.find(',');
+			if (pos != std::string::npos) client_ip = client_ip.substr(0, pos);
+		} else {
+			client_ip = req->getPeerAddr().toIp();
+		}
+		std::string history_key = "viewed:" + video_id + ":" + client_ip;
+		std::string counter_key = "pending_views:" + video_id;
+		int video_duration = *video.getDuration();
+
+		auto redis = drogon::app().getRedisClient();
+		if (!redis) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+			resp->setBody("Failed to get Redis client");
+			co_return resp;
+		}
+
+		auto result = co_await redis->execCommandCoro("SET %s 1 EX %d NX", history_key.c_str(), video_duration);
+		bool is_new_view = !result.isNil();
+
+		if (is_new_view) {
+			co_await redis->execCommandCoro("INCR %s", counter_key.c_str());
+		}
+
+		Json::Value ret;
+		ret["message"] = is_new_view ? "View count incremented" : "View already counted recently";
+		ret["counted"] = is_new_view;
+
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(ret);
+		resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+		co_return resp;
+
+	}
+	catch (const drogon::orm::UnexpectedRows& e) {
+		// Not found 404
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+		resp->setBody("Video not found");
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "DB Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to increment view count: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
 drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnails([[maybe_unused]] HttpRequestPtr req, std::string id, std::string filename) {
 	// サムネイル画像へリダイレクト
 	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());

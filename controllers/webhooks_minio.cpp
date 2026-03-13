@@ -98,11 +98,17 @@ drogon::Task<drogon::HttpResponsePtr> minio::receiveEncodeResult(HttpRequestPtr 
     std::string videoId = (*jsonPtr)["video_id"].asString();
     std::string status = (*jsonPtr)["status"].asString();
     std::string message = (*jsonPtr)["message"].asString();
+    int duration = (*jsonPtr).get("duration", 0).asInt();
     if (status == "completed" || status == "failed") {
         drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
         try {
             auto video = co_await mapper.findByPrimaryKey(videoId);
-            video.setStatus((uint8_t)(status == "completed" ? Status::completed : Status::failed));
+            if (status == "completed") {
+                video.setStatus((uint8_t)Status::completed);
+                video.setDuration(duration);
+            } else {
+                video.setStatus((uint8_t)Status::failed);
+            }
             co_await mapper.update(video);
         }
         catch (const drogon::orm::DrogonDbException& e) {

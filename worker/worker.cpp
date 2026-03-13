@@ -48,9 +48,9 @@ bool upload2MinIO(const std::string& local_file_path, const std::string& bucket_
 	}
 }
 
-void postEncodeResult(const std::string& videoId, const std::string& status, const std::string& message) {
+void postEncodeResult(const std::string& videoId, const std::string& status, const std::string& message, const int duration = 0) {
 	try {
-		std::string payload = "{\"video_id\": \"" + videoId + "\", \"status\": \"" + status + "\", \"message\": \"" + message + "\"}";
+		std::string payload = "{\"video_id\": \"" + videoId + "\", \"status\": \"" + status + "\", \"message\": \"" + message + "\", \"duration\": " + std::to_string(duration) + "}";
 		CURL* curl = curl_easy_init();
 		if (curl) {
 			struct curl_slist* headers = curl_slist_append(NULL, "Content-Type: application/json");
@@ -289,7 +289,7 @@ int main() {
 
 					std::cout << "[JOB COMPLETED] Video ID: " << video_id << std::endl;
 
-					postEncodeResult(video_id, "completed", "Encoding completed successfully");
+					postEncodeResult(video_id, "completed", "Encoding completed successfully", static_cast<int>(total_duration_sec));
 				}
 			}
 

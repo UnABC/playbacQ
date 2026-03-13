@@ -203,6 +203,24 @@ paths:
           description: "アクセスが拒否されました。"
         '404':
           description: "動画が見つかりませんでした。"
+  /api/videos/{id}/views:
+    post:
+      summary: "動画の再生回数のインクリメント"
+      operationId: incrementVideoViewCount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      responses:
+        '200':
+          description: "動画の再生回数がインクリメントされました。"
+        '403':
+          description: "アクセスが拒否されました。"
+        '404':
+          description: "動画が見つかりませんでした。"
   /api/videos/{id}/thumbnails/{thumbnailId}:
     get:
       summary: "サムネイル画像へリダイレクト"
@@ -289,6 +307,9 @@ paths:
                 message:
                   type: string
                   description: "success or error message"
+                duration:
+                  type: number
+                  description: "動画の長さ(秒)"
 
 components:
   schemas:
