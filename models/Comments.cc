@@ -19,6 +19,8 @@ const std::string Comments::Cols::_user_id = "user_id";
 const std::string Comments::Cols::_comment = "comment";
 const std::string Comments::Cols::_timestamp = "timestamp";
 const std::string Comments::Cols::_created_at = "created_at";
+const std::string Comments::Cols::_option = "option";
+const std::string Comments::Cols::_status = "status";
 const std::string Comments::primaryKeyName = "comment_id";
 const bool Comments::hasPrimaryKey = true;
 const std::string Comments::tableName = "comments";
@@ -29,7 +31,9 @@ const std::vector<typename Comments::MetaData> Comments::metaData_={
 {"user_id","std::string","varchar(32)",32,0,0,0},
 {"comment","std::string","text",0,0,0,1},
 {"timestamp","double","double",8,0,0,1},
-{"created_at","::trantor::Date","timestamp",0,0,0,0}
+{"created_at","::trantor::Date","timestamp",0,0,0,0},
+{"option","std::string","text",0,0,0,0},
+{"status","uint8_t","tinyint unsigned",1,0,0,1}
 };
 const std::string &Comments::getColumnName(size_t index) noexcept(false)
 {
@@ -82,11 +86,19 @@ Comments::Comments(const Row &r, const ssize_t indexOffset) noexcept
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
+        if(!r["option"].isNull())
+        {
+            option_=std::make_shared<std::string>(r["option"].as<std::string>());
+        }
+        if(!r["status"].isNull())
+        {
+            status_=std::make_shared<uint8_t>(r["status"].as<uint8_t>());
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 6 > r.size())
+        if(offset + 8 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -140,13 +152,23 @@ Comments::Comments(const Row &r, const ssize_t indexOffset) noexcept
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
+        index = offset + 6;
+        if(!r[index].isNull())
+        {
+            option_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 7;
+        if(!r[index].isNull())
+        {
+            status_=std::make_shared<uint8_t>(r[index].as<uint8_t>());
+        }
     }
 
 }
 
 Comments::Comments(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 6)
+    if(pMasqueradingVector.size() != 8)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -215,6 +237,22 @@ Comments::Comments(const Json::Value &pJson, const std::vector<std::string> &pMa
                 }
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
+        }
+    }
+    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson[pMasqueradingVector[6]].isNull())
+        {
+            option_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+        }
+    }
+    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson[pMasqueradingVector[7]].isNull())
+        {
+            status_=std::make_shared<uint8_t>((uint8_t)pJson[pMasqueradingVector[7]].asUInt64());
         }
     }
 }
@@ -287,12 +325,28 @@ Comments::Comments(const Json::Value &pJson) noexcept(false)
             }
         }
     }
+    if(pJson.isMember("option"))
+    {
+        dirtyFlag_[6]=true;
+        if(!pJson["option"].isNull())
+        {
+            option_=std::make_shared<std::string>(pJson["option"].asString());
+        }
+    }
+    if(pJson.isMember("status"))
+    {
+        dirtyFlag_[7]=true;
+        if(!pJson["status"].isNull())
+        {
+            status_=std::make_shared<uint8_t>((uint8_t)pJson["status"].asUInt64());
+        }
+    }
 }
 
 void Comments::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 6)
+    if(pMasqueradingVector.size() != 8)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -362,6 +416,22 @@ void Comments::updateByMasqueradedJson(const Json::Value &pJson,
             }
         }
     }
+    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson[pMasqueradingVector[6]].isNull())
+        {
+            option_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+        }
+    }
+    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson[pMasqueradingVector[7]].isNull())
+        {
+            status_=std::make_shared<uint8_t>((uint8_t)pJson[pMasqueradingVector[7]].asUInt64());
+        }
+    }
 }
 
 void Comments::updateByJson(const Json::Value &pJson) noexcept(false)
@@ -429,6 +499,22 @@ void Comments::updateByJson(const Json::Value &pJson) noexcept(false)
                 }
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
+        }
+    }
+    if(pJson.isMember("option"))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson["option"].isNull())
+        {
+            option_=std::make_shared<std::string>(pJson["option"].asString());
+        }
+    }
+    if(pJson.isMember("status"))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson["status"].isNull())
+        {
+            status_=std::make_shared<uint8_t>((uint8_t)pJson["status"].asUInt64());
         }
     }
 }
@@ -570,6 +656,50 @@ void Comments::setCreatedAtToNull() noexcept
     dirtyFlag_[5] = true;
 }
 
+const std::string &Comments::getValueOfOption() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(option_)
+        return *option_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &Comments::getOption() const noexcept
+{
+    return option_;
+}
+void Comments::setOption(const std::string &pOption) noexcept
+{
+    option_ = std::make_shared<std::string>(pOption);
+    dirtyFlag_[6] = true;
+}
+void Comments::setOption(std::string &&pOption) noexcept
+{
+    option_ = std::make_shared<std::string>(std::move(pOption));
+    dirtyFlag_[6] = true;
+}
+void Comments::setOptionToNull() noexcept
+{
+    option_.reset();
+    dirtyFlag_[6] = true;
+}
+
+const uint8_t &Comments::getValueOfStatus() const noexcept
+{
+    static const uint8_t defaultValue = uint8_t();
+    if(status_)
+        return *status_;
+    return defaultValue;
+}
+const std::shared_ptr<uint8_t> &Comments::getStatus() const noexcept
+{
+    return status_;
+}
+void Comments::setStatus(const uint8_t &pStatus) noexcept
+{
+    status_ = std::make_shared<uint8_t>(pStatus);
+    dirtyFlag_[7] = true;
+}
+
 void Comments::updateId(const uint64_t id)
 {
     commentId_ = std::make_shared<int32_t>(static_cast<int32_t>(id));
@@ -582,7 +712,9 @@ const std::vector<std::string> &Comments::insertColumns() noexcept
         "user_id",
         "comment",
         "timestamp",
-        "created_at"
+        "created_at",
+        "option",
+        "status"
     };
     return inCols;
 }
@@ -644,6 +776,28 @@ void Comments::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[6])
+    {
+        if(getOption())
+        {
+            binder << getValueOfOption();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[7])
+    {
+        if(getStatus())
+        {
+            binder << getValueOfStatus();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 
 const std::vector<std::string> Comments::updateColumns() const
@@ -668,6 +822,14 @@ const std::vector<std::string> Comments::updateColumns() const
     if(dirtyFlag_[5])
     {
         ret.push_back(getColumnName(5));
+    }
+    if(dirtyFlag_[6])
+    {
+        ret.push_back(getColumnName(6));
+    }
+    if(dirtyFlag_[7])
+    {
+        ret.push_back(getColumnName(7));
     }
     return ret;
 }
@@ -729,6 +891,28 @@ void Comments::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[6])
+    {
+        if(getOption())
+        {
+            binder << getValueOfOption();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[7])
+    {
+        if(getStatus())
+        {
+            binder << getValueOfStatus();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 Json::Value Comments::toJson() const
 {
@@ -781,6 +965,22 @@ Json::Value Comments::toJson() const
     {
         ret["created_at"]=Json::Value();
     }
+    if(getOption())
+    {
+        ret["option"]=getValueOfOption();
+    }
+    else
+    {
+        ret["option"]=Json::Value();
+    }
+    if(getStatus())
+    {
+        ret["status"]=getValueOfStatus();
+    }
+    else
+    {
+        ret["status"]=Json::Value();
+    }
     return ret;
 }
 
@@ -793,7 +993,7 @@ Json::Value Comments::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 6)
+    if(pMasqueradingVector.size() == 8)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -861,6 +1061,28 @@ Json::Value Comments::toMasqueradedJson(
                 ret[pMasqueradingVector[5]]=Json::Value();
             }
         }
+        if(!pMasqueradingVector[6].empty())
+        {
+            if(getOption())
+            {
+                ret[pMasqueradingVector[6]]=getValueOfOption();
+            }
+            else
+            {
+                ret[pMasqueradingVector[6]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[7].empty())
+        {
+            if(getStatus())
+            {
+                ret[pMasqueradingVector[7]]=getValueOfStatus();
+            }
+            else
+            {
+                ret[pMasqueradingVector[7]]=Json::Value();
+            }
+        }
         return ret;
     }
     LOG_ERROR << "Masquerade failed";
@@ -912,6 +1134,22 @@ Json::Value Comments::toMasqueradedJson(
     {
         ret["created_at"]=Json::Value();
     }
+    if(getOption())
+    {
+        ret["option"]=getValueOfOption();
+    }
+    else
+    {
+        ret["option"]=Json::Value();
+    }
+    if(getStatus())
+    {
+        ret["status"]=getValueOfStatus();
+    }
+    else
+    {
+        ret["status"]=Json::Value();
+    }
     return ret;
 }
 
@@ -957,13 +1195,23 @@ bool Comments::validateJsonForCreation(const Json::Value &pJson, std::string &er
         if(!validJsonOfField(5, "created_at", pJson["created_at"], err, true))
             return false;
     }
+    if(pJson.isMember("option"))
+    {
+        if(!validJsonOfField(6, "option", pJson["option"], err, true))
+            return false;
+    }
+    if(pJson.isMember("status"))
+    {
+        if(!validJsonOfField(7, "status", pJson["status"], err, true))
+            return false;
+    }
     return true;
 }
 bool Comments::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                   const std::vector<std::string> &pMasqueradingVector,
                                                   std::string &err)
 {
-    if(pMasqueradingVector.size() != 6)
+    if(pMasqueradingVector.size() != 8)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1027,6 +1275,22 @@ bool Comments::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                   return false;
           }
       }
+      if(!pMasqueradingVector[6].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[6]))
+          {
+              if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[7].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[7]))
+          {
+              if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1072,13 +1336,23 @@ bool Comments::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(5, "created_at", pJson["created_at"], err, false))
             return false;
     }
+    if(pJson.isMember("option"))
+    {
+        if(!validJsonOfField(6, "option", pJson["option"], err, false))
+            return false;
+    }
+    if(pJson.isMember("status"))
+    {
+        if(!validJsonOfField(7, "status", pJson["status"], err, false))
+            return false;
+    }
     return true;
 }
 bool Comments::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                                 const std::vector<std::string> &pMasqueradingVector,
                                                 std::string &err)
 {
-    if(pMasqueradingVector.size() != 6)
+    if(pMasqueradingVector.size() != 8)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1117,6 +1391,16 @@ bool Comments::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
       if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
       {
           if(!validJsonOfField(5, pMasqueradingVector[5], pJson[pMasqueradingVector[5]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+      {
+          if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+      {
+          if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, false))
               return false;
       }
     }
@@ -1220,6 +1504,29 @@ bool Comments::validJsonOfField(size_t index,
                 return true;
             }
             if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 6:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 7:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isUInt())
             {
                 err="Type error in the "+fieldName+" field";
                 return false;
