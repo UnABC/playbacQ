@@ -11,6 +11,8 @@ erDiagram
 	text video_url
 	datetime created_at
 	int view_count
+	int duration
+	int like_count
 	TINYINT status
   }
   comments {
@@ -20,6 +22,8 @@ erDiagram
 	text comment
 	double timestamp
 	datetime created_at
+	text option
+	TINYINT status
   }
   
   tags {

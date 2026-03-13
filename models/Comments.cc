@@ -28,7 +28,7 @@ const std::vector<typename Comments::MetaData> Comments::metaData_={
 {"video_id","std::string","varchar(255)",255,0,0,0},
 {"user_id","std::string","varchar(32)",32,0,0,0},
 {"comment","std::string","text",0,0,0,1},
-{"timestamp","double","double",4,0,0,1},
+{"timestamp","double","double",8,0,0,1},
 {"created_at","::trantor::Date","timestamp",0,0,0,0}
 };
 const std::string &Comments::getColumnName(size_t index) noexcept(false)
@@ -190,7 +190,7 @@ Comments::Comments(const Json::Value &pJson, const std::vector<std::string> &pMa
         {
             timestamp_=std::make_shared<double>(pJson[pMasqueradingVector[4]].asDouble());
         }
-     }
+    }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
     {
         dirtyFlag_[5] = true;
@@ -260,7 +260,7 @@ Comments::Comments(const Json::Value &pJson) noexcept(false)
         {
             timestamp_=std::make_shared<double>(pJson["timestamp"].asDouble());
         }
-     }
+    }
     if(pJson.isMember("created_at"))
     {
         dirtyFlag_[5]=true;

@@ -52,6 +52,8 @@ class Videos
         static const std::string _video_url;
         static const std::string _created_at;
         static const std::string _view_count;
+        static const std::string _duration;
+        static const std::string _like_count;
         static const std::string _status;
     };
 
@@ -178,6 +180,22 @@ class Videos
     ///Set the value of the column view_count
     void setViewCount(const int32_t &pViewCount) noexcept;
 
+    /**  For column duration  */
+    ///Get the value of the column duration, returns the default value if the column is null
+    const int32_t &getValueOfDuration() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<int32_t> &getDuration() const noexcept;
+    ///Set the value of the column duration
+    void setDuration(const int32_t &pDuration) noexcept;
+
+    /**  For column like_count  */
+    ///Get the value of the column like_count, returns the default value if the column is null
+    const int32_t &getValueOfLikeCount() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<int32_t> &getLikeCount() const noexcept;
+    ///Set the value of the column like_count
+    void setLikeCount(const int32_t &pLikeCount) noexcept;
+
     /**  For column status  */
     ///Get the value of the column status, returns the default value if the column is null
     const uint8_t &getValueOfStatus() const noexcept;
@@ -187,7 +205,7 @@ class Videos
     void setStatus(const uint8_t &pStatus) noexcept;
 
 
-    static size_t getColumnNumber() noexcept {  return 9;  }
+    static size_t getColumnNumber() noexcept {  return 11;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -217,6 +235,8 @@ class Videos
     std::shared_ptr<std::string> videoUrl_;
     std::shared_ptr<::trantor::Date> createdAt_;
     std::shared_ptr<int32_t> viewCount_;
+    std::shared_ptr<int32_t> duration_;
+    std::shared_ptr<int32_t> likeCount_;
     std::shared_ptr<uint8_t> status_;
     struct MetaData
     {
@@ -229,7 +249,7 @@ class Videos
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[9]={ false };
+    bool dirtyFlag_[11]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -289,9 +309,21 @@ class Videos
         {
             needSelection=true;
         }
-        sql += "status,";
+        sql += "duration,";
         ++parametersCount;
         if(!dirtyFlag_[8])
+        {
+            needSelection=true;
+        }
+        sql += "like_count,";
+        ++parametersCount;
+        if(!dirtyFlag_[9])
+        {
+            needSelection=true;
+        }
+        sql += "status,";
+        ++parametersCount;
+        if(!dirtyFlag_[10])
         {
             needSelection=true;
         }
@@ -352,6 +384,24 @@ class Videos
             sql +="default,";
         }
         if(dirtyFlag_[8])
+        {
+            sql.append("?,");
+
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[9])
+        {
+            sql.append("?,");
+
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[10])
         {
             sql.append("?,");
 
