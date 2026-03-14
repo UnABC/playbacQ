@@ -49,7 +49,7 @@ drogon::Task<drogon::HttpResponsePtr> comments::postComment([[maybe_unused]] Htt
         newComment.setUserId(req->getAttributes()->get<std::string>("userId"));
         newComment.setCreatedAt(trantor::Date::now());
         newComment.setTimestamp(jsonPtr->get("timestamp", 0.0).asDouble());
-        newComment.setOption(jsonPtr->get("option", "").asString());
+        newComment.setCommand(jsonPtr->get("command", "").asString());
 
         drogon::orm::CoroMapper<drogon_model::playbacq::Comments> mapper(drogon::app().getDbClient());
         auto insertedComment = co_await mapper.insert(newComment);

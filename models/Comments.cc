@@ -19,7 +19,7 @@ const std::string Comments::Cols::_user_id = "user_id";
 const std::string Comments::Cols::_comment = "comment";
 const std::string Comments::Cols::_timestamp = "timestamp";
 const std::string Comments::Cols::_created_at = "created_at";
-const std::string Comments::Cols::_option = "option";
+const std::string Comments::Cols::_command = "command";
 const std::string Comments::Cols::_status = "status";
 const std::string Comments::primaryKeyName = "comment_id";
 const bool Comments::hasPrimaryKey = true;
@@ -32,7 +32,7 @@ const std::vector<typename Comments::MetaData> Comments::metaData_={
 {"comment","std::string","text",0,0,0,1},
 {"timestamp","double","double",8,0,0,1},
 {"created_at","::trantor::Date","timestamp",0,0,0,0},
-{"option","std::string","text",0,0,0,0},
+{"command","std::string","text",0,0,0,0},
 {"status","uint8_t","tinyint unsigned",1,0,0,1}
 };
 const std::string &Comments::getColumnName(size_t index) noexcept(false)
@@ -86,9 +86,9 @@ Comments::Comments(const Row &r, const ssize_t indexOffset) noexcept
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
-        if(!r["option"].isNull())
+        if(!r["command"].isNull())
         {
-            option_=std::make_shared<std::string>(r["option"].as<std::string>());
+            command_=std::make_shared<std::string>(r["command"].as<std::string>());
         }
         if(!r["status"].isNull())
         {
@@ -155,7 +155,7 @@ Comments::Comments(const Row &r, const ssize_t indexOffset) noexcept
         index = offset + 6;
         if(!r[index].isNull())
         {
-            option_=std::make_shared<std::string>(r[index].as<std::string>());
+            command_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 7;
         if(!r[index].isNull())
@@ -244,7 +244,7 @@ Comments::Comments(const Json::Value &pJson, const std::vector<std::string> &pMa
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            option_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+            command_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
         }
     }
     if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
@@ -325,12 +325,12 @@ Comments::Comments(const Json::Value &pJson) noexcept(false)
             }
         }
     }
-    if(pJson.isMember("option"))
+    if(pJson.isMember("command"))
     {
         dirtyFlag_[6]=true;
-        if(!pJson["option"].isNull())
+        if(!pJson["command"].isNull())
         {
-            option_=std::make_shared<std::string>(pJson["option"].asString());
+            command_=std::make_shared<std::string>(pJson["command"].asString());
         }
     }
     if(pJson.isMember("status"))
@@ -421,7 +421,7 @@ void Comments::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            option_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+            command_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
         }
     }
     if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
@@ -501,12 +501,12 @@ void Comments::updateByJson(const Json::Value &pJson) noexcept(false)
             }
         }
     }
-    if(pJson.isMember("option"))
+    if(pJson.isMember("command"))
     {
         dirtyFlag_[6] = true;
-        if(!pJson["option"].isNull())
+        if(!pJson["command"].isNull())
         {
-            option_=std::make_shared<std::string>(pJson["option"].asString());
+            command_=std::make_shared<std::string>(pJson["command"].asString());
         }
     }
     if(pJson.isMember("status"))
@@ -656,30 +656,30 @@ void Comments::setCreatedAtToNull() noexcept
     dirtyFlag_[5] = true;
 }
 
-const std::string &Comments::getValueOfOption() const noexcept
+const std::string &Comments::getValueOfCommand() const noexcept
 {
     static const std::string defaultValue = std::string();
-    if(option_)
-        return *option_;
+    if(command_)
+        return *command_;
     return defaultValue;
 }
-const std::shared_ptr<std::string> &Comments::getOption() const noexcept
+const std::shared_ptr<std::string> &Comments::getCommand() const noexcept
 {
-    return option_;
+    return command_;
 }
-void Comments::setOption(const std::string &pOption) noexcept
+void Comments::setCommand(const std::string &pCommand) noexcept
 {
-    option_ = std::make_shared<std::string>(pOption);
+    command_ = std::make_shared<std::string>(pCommand);
     dirtyFlag_[6] = true;
 }
-void Comments::setOption(std::string &&pOption) noexcept
+void Comments::setCommand(std::string &&pCommand) noexcept
 {
-    option_ = std::make_shared<std::string>(std::move(pOption));
+    command_ = std::make_shared<std::string>(std::move(pCommand));
     dirtyFlag_[6] = true;
 }
-void Comments::setOptionToNull() noexcept
+void Comments::setCommandToNull() noexcept
 {
-    option_.reset();
+    command_.reset();
     dirtyFlag_[6] = true;
 }
 
@@ -713,7 +713,7 @@ const std::vector<std::string> &Comments::insertColumns() noexcept
         "comment",
         "timestamp",
         "created_at",
-        "option",
+        "command",
         "status"
     };
     return inCols;
@@ -778,9 +778,9 @@ void Comments::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[6])
     {
-        if(getOption())
+        if(getCommand())
         {
-            binder << getValueOfOption();
+            binder << getValueOfCommand();
         }
         else
         {
@@ -893,9 +893,9 @@ void Comments::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[6])
     {
-        if(getOption())
+        if(getCommand())
         {
-            binder << getValueOfOption();
+            binder << getValueOfCommand();
         }
         else
         {
@@ -965,13 +965,13 @@ Json::Value Comments::toJson() const
     {
         ret["created_at"]=Json::Value();
     }
-    if(getOption())
+    if(getCommand())
     {
-        ret["option"]=getValueOfOption();
+        ret["command"]=getValueOfCommand();
     }
     else
     {
-        ret["option"]=Json::Value();
+        ret["command"]=Json::Value();
     }
     if(getStatus())
     {
@@ -1063,9 +1063,9 @@ Json::Value Comments::toMasqueradedJson(
         }
         if(!pMasqueradingVector[6].empty())
         {
-            if(getOption())
+            if(getCommand())
             {
-                ret[pMasqueradingVector[6]]=getValueOfOption();
+                ret[pMasqueradingVector[6]]=getValueOfCommand();
             }
             else
             {
@@ -1134,13 +1134,13 @@ Json::Value Comments::toMasqueradedJson(
     {
         ret["created_at"]=Json::Value();
     }
-    if(getOption())
+    if(getCommand())
     {
-        ret["option"]=getValueOfOption();
+        ret["command"]=getValueOfCommand();
     }
     else
     {
-        ret["option"]=Json::Value();
+        ret["command"]=Json::Value();
     }
     if(getStatus())
     {
@@ -1195,9 +1195,9 @@ bool Comments::validateJsonForCreation(const Json::Value &pJson, std::string &er
         if(!validJsonOfField(5, "created_at", pJson["created_at"], err, true))
             return false;
     }
-    if(pJson.isMember("option"))
+    if(pJson.isMember("command"))
     {
-        if(!validJsonOfField(6, "option", pJson["option"], err, true))
+        if(!validJsonOfField(6, "command", pJson["command"], err, true))
             return false;
     }
     if(pJson.isMember("status"))
@@ -1336,9 +1336,9 @@ bool Comments::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(5, "created_at", pJson["created_at"], err, false))
             return false;
     }
-    if(pJson.isMember("option"))
+    if(pJson.isMember("command"))
     {
-        if(!validJsonOfField(6, "option", pJson["option"], err, false))
+        if(!validJsonOfField(6, "command", pJson["command"], err, false))
             return false;
     }
     if(pJson.isMember("status"))

@@ -50,7 +50,7 @@ class Comments
         static const std::string _comment;
         static const std::string _timestamp;
         static const std::string _created_at;
-        static const std::string _option;
+        static const std::string _command;
         static const std::string _status;
     };
 
@@ -157,15 +157,15 @@ class Comments
     void setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept;
     void setCreatedAtToNull() noexcept;
 
-    /**  For column option  */
-    ///Get the value of the column option, returns the default value if the column is null
-    const std::string &getValueOfOption() const noexcept;
+    /**  For column command  */
+    ///Get the value of the column command, returns the default value if the column is null
+    const std::string &getValueOfCommand() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<std::string> &getOption() const noexcept;
-    ///Set the value of the column option
-    void setOption(const std::string &pOption) noexcept;
-    void setOption(std::string &&pOption) noexcept;
-    void setOptionToNull() noexcept;
+    const std::shared_ptr<std::string> &getCommand() const noexcept;
+    ///Set the value of the column command
+    void setCommand(const std::string &pCommand) noexcept;
+    void setCommand(std::string &&pCommand) noexcept;
+    void setCommandToNull() noexcept;
 
     /**  For column status  */
     ///Get the value of the column status, returns the default value if the column is null
@@ -204,7 +204,7 @@ class Comments
     std::shared_ptr<std::string> comment_;
     std::shared_ptr<double> timestamp_;
     std::shared_ptr<::trantor::Date> createdAt_;
-    std::shared_ptr<std::string> option_;
+    std::shared_ptr<std::string> command_;
     std::shared_ptr<uint8_t> status_;
     struct MetaData
     {
@@ -265,7 +265,7 @@ class Comments
         }
         if(dirtyFlag_[6])
         {
-            sql += "option,";
+            sql += "command,";
             ++parametersCount;
         }
         sql += "status,";

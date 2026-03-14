@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS comments (
 	comment TEXT NOT NULL,
 	timestamp DOUBLE NOT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	`option` TEXT,
+	command TEXT,
 	status TINYINT UNSIGNED NOT NULL DEFAULT 0,
 	FOREIGN KEY (video_id) REFERENCES videos(video_id) ON DELETE CASCADE
 );
