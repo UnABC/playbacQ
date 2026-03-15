@@ -313,6 +313,26 @@ paths:
                 duration:
                   type: number
                   description: "動画の長さ(秒)"
+  /ws/comments:
+    get:
+      summary: "コメント送受信用WebSocket"
+      operationId: connectCommentsWebSocket
+      description: |
+        リアルタイムでコメントを受信するためのWebSocketエンドポイントです。
+        ※このエンドポイントはHTTP GETリクエストからWebSocket(ws:// または wss://)へアップグレードされます。
+        コメントの投稿自体は `POST /api/videos/{id}/comments` を使用してください。
+      parameters:
+        - name: video_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "接続する動画のID"
+      responses:
+        '101':
+          description: "Switching Protocols (WebSocket接続確立)"
+        '400':
+          description: "video_idが指定されていない等のエラー"
 
 components:
   schemas:

@@ -1,9 +1,11 @@
 #include "api_comments.h"
 #include <drogon/orm/CoroMapper.h>
 #include <drogon/orm/Criteria.h>
+#include <drogon/PubSubService.h>
 #include <json/json.h>
 #include <string>
 #include "../models/Comments.h"
+#include "websocket_comments.h"
 
 using namespace api;
 
@@ -53,6 +55,8 @@ drogon::Task<drogon::HttpResponsePtr> comments::postComment([[maybe_unused]] Htt
 
         drogon::orm::CoroMapper<drogon_model::playbacq::Comments> mapper(drogon::app().getDbClient());
         auto insertedComment = co_await mapper.insert(newComment);
+        // Websocketでリアルタイムにコメントを配信
+        CommentController::broadcastToRoom(videoId, insertedComment.toJson().toStyledString());
 
         auto resp = drogon::HttpResponse::newHttpJsonResponse(insertedComment.toJson());
         resp->setStatusCode(drogon::HttpStatusCode::k201Created);

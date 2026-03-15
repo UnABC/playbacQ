@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS videos (
 );
 CREATE TABLE IF NOT EXISTS comments (
 	comment_id INT AUTO_INCREMENT PRIMARY KEY,
-	video_id VARCHAR(255) UNIQUE KEY,
+	video_id VARCHAR(255),
 	user_id VARCHAR(32),
 	comment TEXT NOT NULL,
 	timestamp DOUBLE NOT NULL,
