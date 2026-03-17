@@ -104,7 +104,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos(HttpRequestPtr req) {
 		auto customConfig = drogon::app().getCustomConfig();
 		std::string baseUrl = customConfig["baseUrl"].asString();
 		newVideo.setVideoUrl(baseUrl + "/watch/" + videoId + ".mp4");
-		newVideo.setThumbnailUrl(baseUrl + "/thumbnails/" + videoId + ".jpg");
+		newVideo.setThumbnailUrl("/api/videos/" + videoId + "/thumbnail");
 
 		drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 		co_await mapper.insert(newVideo);
@@ -342,6 +342,10 @@ drogon::Task<drogon::HttpResponsePtr> videos::incrementVideoViews([[maybe_unused
 		resp->setBody("Failed to increment view count: " + std::string(e.what()));
 		co_return resp;
 	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::getVideoTopThumbnail([[maybe_unused]] HttpRequestPtr req, std::string id) {
+	return getVideoThumbnails(req, id, "thumbnail.jpg");
 }
 
 drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnails([[maybe_unused]] HttpRequestPtr req, std::string id, std::string filename) {

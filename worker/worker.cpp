@@ -235,7 +235,7 @@ int main() {
 							postEncodeResult(video_id, "failed", "ffmpeg exited with code " + std::to_string(exit_code));
 							continue;
 						}
-
+						// シークバー用のサムネ生成
 						std::vector<std::string> thumb_args = {
 							"-i", "http://minio:9000/videofiles/" + video_id + ".mp4",
 							"-vf", std::format("fps=1/{},scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2:black,tile=10x10", interval),
@@ -244,6 +244,34 @@ int main() {
 						};
 						boost::process::child ffmpeg_thumb(ffmpeg_path, boost::process::args(thumb_args), boost::process::std_out > boost::process::null, boost::process::std_err > boost::process::null);
 						ffmpeg_thumb.wait();
+						exit_code = ffmpeg_thumb.exit_code();
+						if (exit_code == 0) {
+							std::cout << "Thumbnail generation completed successfully for video ID: " << video_id << std::endl;
+						} else {
+							std::cerr << "ffmpeg exited with code " << exit_code << " for video ID: " << video_id << std::endl;
+							postEncodeResult(video_id, "failed", "ffmpeg exited with code " + std::to_string(exit_code));
+							continue;
+						}
+						//TODO: 選択制にする
+						//ホンモノのサムネ生成
+						int thumb_time = std::min(4, static_cast<int>(total_duration_sec / 2));
+						std::vector<std::string> thumb_args2 = {
+							"-ss", std::to_string(thumb_time),
+							"-i", "http://minio:9000/videofiles/" + video_id + ".mp4",
+							"-vf", "thumbnail,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black",
+							"-frames:v", "1",
+							base_dir + "thumbnail.jpg"
+						};
+						boost::process::child ffmpeg_thumb2(ffmpeg_path, boost::process::args(thumb_args2), boost::process::std_out > boost::process::null, boost::process::std_err > boost::process::null);
+						ffmpeg_thumb2.wait();
+						exit_code = ffmpeg_thumb2.exit_code();
+						if (exit_code == 0) {
+							std::cout << "High-quality thumbnail generation completed successfully for video ID: " << video_id << std::endl;
+						} else {
+							std::cerr << "ffmpeg exited with code " << exit_code << " for video ID: " << video_id << std::endl;
+							postEncodeResult(video_id, "failed", "ffmpeg exited with code " + std::to_string(exit_code));
+							continue;
+						}
 					}
 					catch (const std::exception& e) {
 						std::cerr << "Encoding Error: " << e.what() << std::endl;
@@ -283,6 +311,7 @@ int main() {
 						}
 					}
 					upload2MinIO(base_dir + "thumbnails.vtt", "videos", "hls/" + video_id + "/thumbnails.vtt");
+					upload2MinIO(base_dir + "thumbnail.jpg", "videos", "hls/" + video_id + "/thumbnail.jpg");
 					std::filesystem::remove_all("/tmp/playbacq_encode/" + video_id);
 
 					deleteFromMinIO("videofiles", video_id + ".mp4");

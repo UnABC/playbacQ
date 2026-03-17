@@ -224,6 +224,24 @@ paths:
           description: "アクセスが拒否されました。"
         '404':
           description: "動画が見つかりませんでした。"
+  /api/videos/{id}/thumbnail:
+    get:
+      summary: "動画のサムネ画像へのリダイレクト"
+      operationId: getVideoThumbnail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      responses:
+        '302':
+          description: "動画のサムネ画像へのリダイレクト"
+        '403':
+          description: "アクセスが拒否されました。"
+        '404':
+          description: "動画が見つかりませんでした。"
   /api/videos/{id}/thumbnails/{thumbnailId}:
     get:
       summary: "サムネイル画像へリダイレクト"
@@ -243,16 +261,8 @@ paths:
             type: string
           description: "サムネイルのID"
       responses:
-        '200':
-          description: "署名付きurlを含むサムネイル画像のURLを返します。"
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  url:
-                    type: string
-                    description: "署名付きurlを含むサムネイル画像のURL"
+        '302':
+          description: "サムネイル画像へのリダイレクト"
         '403':
           description: "アクセスが拒否されました。"
         '404':
@@ -376,6 +386,10 @@ components:
           type: integer
           readOnly: true
           description: "動画の再生回数"
+        duration:
+          type: number
+          readOnly: true
+          description: "動画の長さ(秒)"
     Comment:
       type: object
       properties:
