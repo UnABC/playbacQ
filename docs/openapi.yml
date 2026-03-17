@@ -6,7 +6,7 @@ info:
   contact:
     name: traP
     url: "https://trap.jp/"
-  
+
 servers:
   - url: "http://localhost:8080"
     description: local
@@ -43,14 +43,14 @@ paths:
           in: "query"
           description: "動画の並び順を昇順(1)か降順(0)で指定します。"
       responses:
-        '200':
+        "200":
           description: "動画の一覧を取得します。"
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Video'
+                  $ref: "#/components/schemas/Video"
     post:
       summary: "動画の投稿"
       operationId: createVideo
@@ -68,12 +68,12 @@ paths:
                   type: string
                   description: "動画の説明"
       responses:
-        '201':
+        "201":
           description: "動画が作成されました。"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Video'
+                $ref: "#/components/schemas/Video"
 
   /api/videos/{id}:
     get:
@@ -87,15 +87,15 @@ paths:
             type: string
           description: "動画のID"
       responses:
-        '200':
+        "200":
           description: "動画を返します。"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Video'
-        '403':
+                $ref: "#/components/schemas/Video"
+        "403":
           description: "アクセスが拒否されました。"
-        '404':
+        "404":
           description: "動画が見つかりませんでした。"
   /api/videos/{id}/comments:
     get:
@@ -109,7 +109,7 @@ paths:
             type: string
           description: "動画のID"
       responses:
-        '200':
+        "200":
           description: "動画のコメントを返します。"
           content:
             application/json:
@@ -118,7 +118,7 @@ paths:
                 items:
                   type: array
                   items:
-                    $ref: '#/components/schemas/Comment'
+                    $ref: "#/components/schemas/Comment"
     post:
       summary: "動画のコメントの投稿"
       operationId: createComment
@@ -147,12 +147,12 @@ paths:
                   type: string
                   description: "コメントのコマンド(Json文字列)"
       responses:
-        '201':
+        "201":
           description: "コメントが作成されました。"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Comment'
+                $ref: "#/components/schemas/Comment"
   /api/videos/{id}/progress:
     get:
       summary: "動画のアップロードの進捗の取得"
@@ -165,7 +165,7 @@ paths:
             type: string
           description: "動画のID"
       responses:
-        '200':
+        "200":
           description: "動画のアップロードの進捗を返します。"
           content:
             application/json:
@@ -179,9 +179,9 @@ paths:
                   status:
                     type: string
                     description: "動画のアップロードの状態(pending, processing, completed, failed)"
-        '403':
+        "403":
           description: "アクセスが拒否されました。"
-        '404':
+        "404":
           description: "動画が見つかりませんでした。"
   /api/videos/{id}/play:
     get:
@@ -195,16 +195,16 @@ paths:
             type: string
           description: "動画のID"
       responses:
-        '200':
+        "200":
           description: "署名付きurlを含む.m3u8ファイルを返します。"
           content:
             application/vnd.apple.mpegurl:
               schema:
                 type: string
                 description: "署名付きurlを含む.m3u8ファイルの内容"
-        '403':
+        "403":
           description: "アクセスが拒否されました。"
-        '404':
+        "404":
           description: "動画が見つかりませんでした。"
   /api/videos/{id}/views:
     post:
@@ -218,11 +218,11 @@ paths:
             type: string
           description: "動画のID"
       responses:
-        '200':
+        "200":
           description: "動画の再生回数がインクリメントされました。"
-        '403':
+        "403":
           description: "アクセスが拒否されました。"
-        '404':
+        "404":
           description: "動画が見つかりませんでした。"
   /api/videos/{id}/thumbnail:
     get:
@@ -236,11 +236,11 @@ paths:
             type: string
           description: "動画のID"
       responses:
-        '302':
+        "302":
           description: "動画のサムネ画像へのリダイレクト"
-        '403':
+        "403":
           description: "アクセスが拒否されました。"
-        '404':
+        "404":
           description: "動画が見つかりませんでした。"
   /api/videos/{id}/thumbnails/{thumbnailId}:
     get:
@@ -261,11 +261,11 @@ paths:
             type: string
           description: "サムネイルのID"
       responses:
-        '302':
+        "302":
           description: "サムネイル画像へのリダイレクト"
-        '403':
+        "403":
           description: "アクセスが拒否されました。"
-        '404':
+        "404":
           description: "動画またはサムネイルが見つかりませんでした。"
   /api/videos/{id}/vtt:
     get:
@@ -279,17 +279,92 @@ paths:
             type: string
           description: "動画のID"
       responses:
-        '200':
+        "200":
           description: "動画のサムネイルのWebVTTファイルを返します。"
           content:
             text/vtt:
               schema:
                 type: string
                 description: "動画のサムネイルのWebVTTファイルの内容"
-        '403':
+        "403":
           description: "アクセスが拒否されました。"
-        '404':
+        "404":
           description: "動画が見つかりませんでした。"
+  /api/videos/{id}/tags:
+    get:
+      summary: "動画のタグの取得"
+      operationId: getVideoTags
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      responses:
+        "200":
+          description: "動画のタグを返します。"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "動画が見つかりませんでした。"
+    post:
+      summary: "動画のタグの追加"
+      operationId: addVideoTag
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tag:
+                  type: string
+                  description: "追加するタグ"
+      responses:
+        "200":
+          description: "動画のタグが追加されました。"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "動画が見つかりませんでした。"
+  /api/tag:
+    get:
+      summary: "タグの検索"
+      operationId: searchTags
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "タグの検索クエリ"
+      responses:
+        "200":
+          description: "タグの検索結果(動画)を返します。"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Video"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "タグが見つかりませんでした。"
   /webhooks/minio:
     post:
       summary: "動画アップロードの通知用"
@@ -339,9 +414,9 @@ paths:
             type: string
           description: "接続する動画のID"
       responses:
-        '101':
+        "101":
           description: "Switching Protocols (WebSocket接続確立)"
-        '400':
+        "400":
           description: "video_idが指定されていない等のエラー"
 
 components:

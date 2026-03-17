@@ -22,6 +22,8 @@ namespace api
     ADD_METHOD_TO(videos::getVideoTopThumbnail, "/api/videos/{1}/thumbnail", Get);
     ADD_METHOD_TO(videos::getVideoThumbnails, "/api/videos/{1}/thumbnails/{2}", Get);
     ADD_METHOD_TO(videos::getVideoThumbnailVtt, "/api/videos/{1}/vtt", Get);
+    ADD_METHOD_TO(videos::getTags, "/api/videos/{1}/tags", Get);
+    ADD_METHOD_TO(videos::addTag, "/api/videos/{1}/tags", Post);
     // METHOD_ADD(videos::your_method_name, "/{1}/{2}/list", Get); // path is /api/videos/{arg1}/{arg2}/list
     METHOD_LIST_END;
     drogon::Task<drogon::HttpResponsePtr>  getVideos(HttpRequestPtr req);
@@ -33,5 +35,7 @@ namespace api
     drogon::Task<drogon::HttpResponsePtr>  getVideoTopThumbnail(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr>  getVideoThumbnails(HttpRequestPtr req, std::string id, std::string filename);
     drogon::Task<drogon::HttpResponsePtr>  getVideoThumbnailVtt(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr>  getTags(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr>  addTag(HttpRequestPtr req, std::string id);
   };
 }

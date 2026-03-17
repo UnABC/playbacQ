@@ -14,6 +14,7 @@
 #include <string_view>
 #include "../models/Videos.h"
 #include "../models/Tags.h"
+#include "../models/VideoTags.h"
 #include "../plugins/S3Plugin.h"
 #include "Status.h"
 
@@ -44,11 +45,14 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 	}
 	if (sortby.has_value()) {
 		auto sort_order = (order.has_value() && order.value() == 0) ? drogon::orm::SortOrder::DESC : drogon::orm::SortOrder::ASC;
-		// TODO : バリエーションを増やす
 		if (sortby.value() == "created_at") {
 			mapper.orderBy(drogon_model::playbacq::Videos::Cols::_created_at, sort_order);
 		} else if (sortby.value() == "title") {
 			mapper.orderBy(drogon_model::playbacq::Videos::Cols::_title, sort_order);
+		} else if (sortby.value() == "view_count") {
+			mapper.orderBy(drogon_model::playbacq::Videos::Cols::_view_count, sort_order);
+		} else if (sortby.value() == "duration") {
+			mapper.orderBy(drogon_model::playbacq::Videos::Cols::_duration, sort_order);
 		} else {
 			// TODO : デフォルト値をいい感じにする
 			mapper.orderBy(drogon_model::playbacq::Videos::Cols::_created_at, drogon::orm::SortOrder::DESC);
@@ -400,4 +404,35 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnailVtt([[maybe_unuse
 		resp->setBody("Failed to fetch thumbnail VTT from MinIO: " + std::string(e.what()));
 		co_return resp;
 	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::getTags([[maybe_unused]] HttpRequestPtr req, std::string video_id) {
+	//動画に紐づくタグを取得する
+	drogon::orm::CoroMapper<drogon_model::playbacq::VideoTags> mapper(drogon::app().getDbClient());
+	try {
+		// IDを取得
+		auto tagsList = co_await mapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::VideoTags::Cols::_video_id, drogon::orm::CompareOperator::EQ, video_id));
+		// IDからタグ名を取得
+		Json::Value jsonResponse(Json::arrayValue);
+		drogon::orm::CoroMapper<drogon_model::playbacq::Tags> tagMapper(drogon::app().getDbClient());
+		for (const auto& videoTag : tagsList) {
+			auto tag = co_await tagMapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::Tags::Cols::_tag_id, drogon::orm::CompareOperator::EQ, videoTag.getValueOfTagId()));
+			if (!tag.empty()) {
+				jsonResponse.append(tag[0].getValueOfName());
+			}
+		}
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
+		co_return  resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "DB Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to retrieve tags: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::addTag([[maybe_unused]] HttpRequestPtr req, std::string video_id) {
+	// TODO:動画にタグを追加する
 }
