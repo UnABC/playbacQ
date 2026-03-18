@@ -7,12 +7,14 @@ using namespace drogon;
 
 namespace api
 {
-class tag : public drogon::HttpController<tag>
-{
+  class tag : public drogon::HttpController<tag>
+  {
   public:
     METHOD_LIST_BEGIN;
-    ADD_METHOD_TO(tag::getTags, "/api/tag", Get); 
+    ADD_METHOD_TO(tag::getTags, "/api/tag", Get);
+    ADD_METHOD_TO(tag::deleteTag, "/api/tag", Delete);
     METHOD_LIST_END;
     drogon::Task<drogon::HttpResponsePtr>  getTags(HttpRequestPtr req);
-};
+    drogon::Task<drogon::HttpResponsePtr>  deleteTag(HttpRequestPtr req);
+  };
 }

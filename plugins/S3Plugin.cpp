@@ -1,6 +1,8 @@
 #include "S3Plugin.h"
 #include <aws/core/auth/AWSCredentials.h>
 #include <aws/core/utils/stream/PreallocatedStreamBuf.h>
+#include <aws/s3/model/Delete.h>
+#include <aws/s3/model/ObjectIdentifier.h>
 #include <sstream>
 #include <stdexcept>
 
@@ -83,6 +85,7 @@ std::string S3Plugin::genPresignedGetUrl(const std::string& videoPath, const lon
     return std::string(presignedUrl.c_str());
 }
 
+// m3u8ファイル取得用
 std::string S3Plugin::getObject(const std::string& key, const std::string bucket) {
     if (!s3InternalClient) {
         throw std::runtime_error("S3 internal client is not initialized");
@@ -100,4 +103,46 @@ std::string S3Plugin::getObject(const std::string& key, const std::string bucket
     std::ostringstream ss;
     ss << outcome.GetResult().GetBody().rdbuf();
     return ss.str();
+}
+
+void S3Plugin::deleteFolder(const std::string& prefix, const std::string bucket) {
+    if (!s3InternalClient) {
+        throw std::runtime_error("S3 internal client is not initialized");
+    }
+
+    Aws::S3::Model::ListObjectsV2Request listRequest;
+    listRequest.SetBucket(bucket);
+    listRequest.SetPrefix(prefix);
+
+    bool isTruncated = false;
+    do {
+        auto listOutcome = s3InternalClient->ListObjectsV2(listRequest);
+        if (!listOutcome.IsSuccess()) {
+            throw std::runtime_error("Failed to list objects for deletion: " + std::string(listOutcome.GetError().GetMessage().c_str()));
+        }
+        const auto& objects = listOutcome.GetResult().GetContents();
+        // 削除するオブジェクトがない場合は終了
+        if (objects.empty()) break;
+        // 一括削除リクエストの作成
+        Aws::S3::Model::DeleteObjectsRequest deleteRequest;
+        deleteRequest.SetBucket(bucket);
+        Aws::S3::Model::Delete deleteObjects;
+        for (const auto& object : objects) {
+            Aws::S3::Model::ObjectIdentifier id;
+            id.SetKey(object.GetKey());
+            deleteObjects.AddObjects(id);
+        }
+        deleteObjects.SetQuiet(true);
+        deleteRequest.SetDelete(deleteObjects);
+        // 一括削除の実行
+        auto deleteOutcome = s3InternalClient->DeleteObjects(deleteRequest);
+        if (!deleteOutcome.IsSuccess()) {
+            throw std::runtime_error("Failed to delete objects: " + std::string(deleteOutcome.GetError().GetMessage().c_str()));
+        }
+        // 一括削除の上限は1000件なので、続きがあるか確認してループ
+        isTruncated = listOutcome.GetResult().GetIsTruncated();
+        if (isTruncated) {
+            listRequest.SetContinuationToken(listOutcome.GetResult().GetNextContinuationToken());
+        }
+    } while (isTruncated);
 }

@@ -6,6 +6,8 @@
 #include <aws/core/Aws.h>
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/GetObjectRequest.h>
+#include <aws/s3/model/DeleteObjectsRequest.h>
+#include <aws/s3/model/ListObjectsV2Request.h>
 
 class S3Plugin : public drogon::Plugin<S3Plugin> {
 private:
@@ -21,5 +23,6 @@ public:
   std::string genPresignedUrl(const std::string& videoId, const std::string bucket = "videofiles");
   std::string genPresignedGetUrl(const std::string& videoPath, const long long expirationSeconds = 900, const std::string bucket = "videos");
   std::string getObject(const std::string& key, const std::string bucket = "videos");
+  void deleteFolder(const std::string& prefix, const std::string bucket = "videos");
 };
 

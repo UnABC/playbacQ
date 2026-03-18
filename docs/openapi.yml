@@ -74,6 +74,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Video"
+        "400":
+          description: "リクエストが不正です。"
+        "403":
+          description: "アクセスが拒否されました。"
+    delete:
+      summary: "動画の削除"
+      description: "動画とそれに関連するデータ(コメント、タグなど)を削除します。タグそのものは消えません。動画の投稿者のみが削除できます。"
+      operationId: deleteVideo
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      responses:
+        "200":
+          description: "動画が削除されました。"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "動画が見つかりませんでした。"
 
   /api/videos/{id}:
     get:
@@ -153,6 +175,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Comment"
+    delete:
+      summary: "動画のコメントの削除"
+      description: "動画のコメントを削除します。コメントしたユーザーまたは動画の投稿者のみが削除できます。"
+      operationId: deleteComment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                commentId:
+                  type: integer
+                  description: "削除するコメントのID"
+      responses:
+        "200":
+          description: "コメントが削除されました。"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "動画またはコメントが見つかりませんでした。"
   /api/videos/{id}/progress:
     get:
       summary: "動画のアップロードの進捗の取得"
@@ -357,6 +407,7 @@ paths:
           description: "動画が見つかりませんでした。"
     delete:
       summary: "動画のタグの削除"
+      description: "動画からタグを削除します。タグそのものは消えません。"
       operationId: deleteVideoTag
       parameters:
         - name: id
@@ -372,9 +423,9 @@ paths:
             schema:
               type: object
               properties:
-                tag:
-                  type: string
-                  description: "削除するタグの名前"
+                tag_id:
+                  type: number
+                  description: "削除するタグのid"
       responses:
         "200":
           description: "動画のタグが削除されました。"
@@ -407,6 +458,27 @@ paths:
                       type: number
                     name:
                       type: string
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "タグが見つかりませんでした。"
+    delete:
+      summary: "タグの削除"
+      description: "タグを完全に削除します。タグが付いている動画からもタグが消えます。"
+      operationId: deleteTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tag_id:
+                  type: number
+                  description: "削除するタグのid"
+      responses:
+        "200":
+          description: "タグが削除されました。"
         "403":
           description: "アクセスが拒否されました。"
         "404":

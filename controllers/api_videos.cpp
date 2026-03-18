@@ -13,6 +13,7 @@
 #include <ranges>
 #include <string_view>
 #include "../models/Videos.h"
+#include "../models/Comments.h"
 #include "../models/Tags.h"
 #include "../models/VideoTags.h"
 #include "../plugins/S3Plugin.h"
@@ -155,6 +156,70 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos(HttpRequestPtr req) {
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
 		resp->setBody("Failed to create video: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::deleteVideo(HttpRequestPtr req) {
+	auto jsonPtr = req->getJsonObject();
+	if (!jsonPtr) {
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+		resp->setBody("Invalid JSON format");
+		co_return resp;
+	}
+	std::string videoId = jsonPtr->get("video_id", "").asString();
+	if (videoId.empty()) {
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+		resp->setBody("Missing video_id");
+		co_return resp;
+	}
+	try {
+		drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+		auto video = co_await mapper.findByPrimaryKey(videoId);
+		if (*video.getUserId() != req->getAttributes()->get<std::string>("userId")) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k403Forbidden);
+			resp->setBody("You are not the owner of this video");
+			co_return resp;
+		}
+		// コメントを削除
+		drogon::orm::CoroMapper<drogon_model::playbacq::Comments> commentMapper(drogon::app().getDbClient());
+		co_await commentMapper.deleteBy(drogon::orm::Criteria(drogon_model::playbacq::Comments::Cols::_video_id, drogon::orm::CompareOperator::EQ, videoId));
+		// VideoTagsを削除
+		drogon::orm::CoroMapper<drogon_model::playbacq::VideoTags> videoTagMapper(drogon::app().getDbClient());
+		co_await videoTagMapper.deleteBy(drogon::orm::Criteria(drogon_model::playbacq::VideoTags::Cols::_video_id, drogon::orm::CompareOperator::EQ, videoId));
+		// MinIO上の実体をフォルダごと削除
+		auto s3Plugin = drogon::app().getPlugin<S3Plugin>();
+		try {
+			s3Plugin->deleteFolder("hls/" + videoId + "/");
+		}
+		catch (const std::exception& e) {
+			std::cerr << "S3 Error: " << e.what() << std::endl;
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+			resp->setBody("Failed to delete video files: " + std::string(e.what()));
+			co_return resp;
+		}
+		// DBから動画情報を削除
+		co_await mapper.deleteByPrimaryKey(videoId);
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+		resp->setBody("Video deleted successfully");
+		co_return resp;
+	}
+	catch (const drogon::orm::UnexpectedRows& e) {
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+		resp->setBody("Video not found");
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "DB Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to delete video: " + std::string(e.what()));
 		co_return resp;
 	}
 }
@@ -517,16 +582,32 @@ drogon::Task<drogon::HttpResponsePtr> videos::removeTag(HttpRequestPtr req, std:
 		co_return resp;
 	}
 	try {
-		std::string tagName = jsonPtr->get("tag", "NULL").asString();
+		std::string tag_id_str = jsonPtr->get("tag_id", "NULL").asString();
+		if (tag_id_str == "NULL") {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+			resp->setBody("tag_id is required");
+			co_return resp;
+		}
+		int32_t tagId;
+		try {
+			tagId = std::stoi(tag_id_str);
+		}
+		catch (const std::exception& e) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+			resp->setBody("Invalid tag_id format");
+			co_return resp;
+		}
+		// tag_idからタグが存在するか確認
 		drogon::orm::CoroMapper<drogon_model::playbacq::Tags> tagMapper(drogon::app().getDbClient());
-		auto tags = co_await tagMapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::Tags::Cols::_name, drogon::orm::CompareOperator::EQ, tagName));
+		auto tags = co_await tagMapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::Tags::Cols::_tag_id, drogon::orm::CompareOperator::EQ, tagId));
 		if (tags.empty()) {
 			auto resp = drogon::HttpResponse::newHttpResponse();
 			resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
 			resp->setBody("Tag not found");
 			co_return resp;
 		}
-		int32_t tagId = tags[0].getValueOfTagId();
 		// 動画と紐づかれているか再確認
 		drogon::orm::CoroMapper<drogon_model::playbacq::VideoTags> videoTagMapper(drogon::app().getDbClient());
 		auto videoTags = co_await videoTagMapper.findBy(

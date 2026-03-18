@@ -15,6 +15,7 @@ namespace api
     // use METHOD_ADD to add your custom processing function here;
     ADD_METHOD_TO(videos::getVideos, "/api/videos", Get); // path is /api/videos
     ADD_METHOD_TO(videos::postVideos, "/api/videos", Post, "AuthFilter"); // path is /api/videos
+    ADD_METHOD_TO(videos::deleteVideo, "/api/videos", Delete, "AuthFilter");
     ADD_METHOD_TO(videos::getVideo, "/api/videos/{1}", Get); // path is /api/videos/{id}
     ADD_METHOD_TO(videos::getVideoProgress, "/api/videos/{1}/progress", Get);
     ADD_METHOD_TO(videos::getVideoPlayM3u8, "/api/videos/{1}/play", Get);
@@ -29,6 +30,7 @@ namespace api
     METHOD_LIST_END;
     drogon::Task<drogon::HttpResponsePtr>  getVideos(HttpRequestPtr req);
     drogon::Task<drogon::HttpResponsePtr>  postVideos(HttpRequestPtr req);
+    drogon::Task<drogon::HttpResponsePtr>  deleteVideo(HttpRequestPtr req);
     drogon::Task<drogon::HttpResponsePtr>  getVideo(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr>  getVideoProgress(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr>  getVideoPlayM3u8(HttpRequestPtr req, std::string id);
