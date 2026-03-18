@@ -1,5 +1,6 @@
 # Playbacq
 動画共有サービス
+
 ・フロントエンド：https://github.com/UnABC/playbacQ-UI
 
 ## 技術スタック
@@ -17,14 +18,18 @@
 * **Others**: AWS SDK for C++ (S3 Plugin)
 
 ## 環境構築
+`
 docker compose up -d
+`
 
 ## 実行
+```
 mkdir build
 cd build
 cmake ..
 make
 ./playbacq
+```
 
 または
 
