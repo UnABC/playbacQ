@@ -41,7 +41,6 @@ COPY models/ /app/models/
 COPY controllers/ /app/controllers/
 COPY filters/ /app/filters/
 COPY plugins/ /app/plugins/
-COPY views/ /app/views/
 COPY worker/ /app/worker/
 COPY docker/ /app/docker/
 COPY config.json config.yaml /app/
