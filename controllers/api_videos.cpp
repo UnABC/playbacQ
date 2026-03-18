@@ -41,7 +41,24 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 		criteria = criteria && (titleCriteria || descriptionCriteria);
 	}
 	if (tag.has_value()) {
-		//TODO: タグ検索の実装。タグは複数持てる可能性があるため、動画とタグの中間テーブルを作成して、そこから動画を検索する必要がある。
+		drogon::orm::CoroMapper<drogon_model::playbacq::Tags> tagMapper(drogon::app().getDbClient());
+		try {
+			auto tagObj = co_await tagMapper.findOne(drogon::orm::Criteria(drogon_model::playbacq::Tags::Cols::_name, drogon::orm::CompareOperator::EQ, tag.value()));
+			drogon::orm::CoroMapper<drogon_model::playbacq::VideoTags> videoTagMapper(drogon::app().getDbClient());
+			auto videoTags = co_await videoTagMapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::VideoTags::Cols::_tag_id, drogon::orm::CompareOperator::EQ, *tagObj.getTagId()));
+			std::vector<std::string> videoIds;
+			for (const auto& videoTag : videoTags) {
+				videoIds.push_back(*videoTag.getVideoId());
+			}
+			criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_video_id, drogon::orm::CompareOperator::In, videoIds);
+		}
+		catch (const std::exception& e) {
+			std::cerr << "DB Error: " << e.what() << std::endl;
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+			resp->setBody("Failed to retrieve videos: " + std::string(e.what()));
+			co_return resp;
+		}
 	}
 	if (sortby.has_value()) {
 		auto sort_order = (order.has_value() && order.value() == 0) ? drogon::orm::SortOrder::DESC : drogon::orm::SortOrder::ASC;
@@ -418,7 +435,10 @@ drogon::Task<drogon::HttpResponsePtr> videos::getTags([[maybe_unused]] HttpReque
 		for (const auto& videoTag : tagsList) {
 			auto tag = co_await tagMapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::Tags::Cols::_tag_id, drogon::orm::CompareOperator::EQ, videoTag.getValueOfTagId()));
 			if (!tag.empty()) {
-				jsonResponse.append(tag[0].getValueOfName());
+				Json::Value tagJson;
+				tagJson["tag_id"] = tag[0].getValueOfTagId();
+				tagJson["name"] = tag[0].getValueOfName();
+				jsonResponse.append(tagJson);
 			}
 		}
 		auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
@@ -433,6 +453,45 @@ drogon::Task<drogon::HttpResponsePtr> videos::getTags([[maybe_unused]] HttpReque
 	}
 }
 
-drogon::Task<drogon::HttpResponsePtr> videos::addTag([[maybe_unused]] HttpRequestPtr req, std::string video_id) {
-	// TODO:動画にタグを追加する
+drogon::Task<drogon::HttpResponsePtr> videos::addTag(HttpRequestPtr req, std::string video_id) {
+	auto jsonPtr = req->getJsonObject();
+	if (!jsonPtr) {
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+		resp->setBody("Invalid JSON format");
+		co_return resp;
+	}
+	try {
+		std::string tagName = jsonPtr->get("tag", "NULL").asString();
+		drogon::orm::CoroMapper<drogon_model::playbacq::Tags> tagMapper(drogon::app().getDbClient());
+		auto tags = co_await tagMapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::Tags::Cols::_name, drogon::orm::CompareOperator::EQ, tagName));
+		int32_t tagId;
+		if (tags.empty()) {
+			drogon_model::playbacq::Tags newTag;
+			newTag.setName(tagName);
+			auto insertedTag = co_await tagMapper.insert(newTag);
+			tagId = insertedTag.getValueOfTagId();
+		} else {
+			tagId = tags[0].getValueOfTagId();
+		}
+		drogon::orm::CoroMapper<drogon_model::playbacq::VideoTags> videoTagMapper(drogon::app().getDbClient());
+		drogon_model::playbacq::VideoTags newVideoTag;
+		newVideoTag.setVideoId(video_id);
+		newVideoTag.setTagId(tagId);
+		co_await videoTagMapper.insert(newVideoTag);
+
+		Json::Value ret;
+		ret["tag_id"] = tagId;
+		ret["name"] = tagName;
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(ret);
+		resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to add tag: " + std::string(e.what()));
+		co_return resp;
+	}
 }

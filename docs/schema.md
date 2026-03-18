@@ -34,6 +34,7 @@ erDiagram
   video_tags {
 	varchar(255) video_id PK,FK
 	int tag_id PK,FK
+	int status
   }
   
   videos||--o{comments : has

@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS tags (
 CREATE TABLE IF NOT EXISTS video_tags (
 	video_id VARCHAR(255),
 	tag_id INT,
+	status TINYINT UNSIGNED NOT NULL DEFAULT 0,
 	PRIMARY KEY (video_id, tag_id),
 	FOREIGN KEY (video_id) REFERENCES videos(video_id) ON DELETE CASCADE,
 	FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
