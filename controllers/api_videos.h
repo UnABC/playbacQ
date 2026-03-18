@@ -24,6 +24,7 @@ namespace api
     ADD_METHOD_TO(videos::getVideoThumbnailVtt, "/api/videos/{1}/vtt", Get);
     ADD_METHOD_TO(videos::getTags, "/api/videos/{1}/tags", Get);
     ADD_METHOD_TO(videos::addTag, "/api/videos/{1}/tags", Post);
+    ADD_METHOD_TO(videos::removeTag, "/api/videos/{1}/tags", Delete);
     // METHOD_ADD(videos::your_method_name, "/{1}/{2}/list", Get); // path is /api/videos/{arg1}/{arg2}/list
     METHOD_LIST_END;
     drogon::Task<drogon::HttpResponsePtr>  getVideos(HttpRequestPtr req);
@@ -37,5 +38,6 @@ namespace api
     drogon::Task<drogon::HttpResponsePtr>  getVideoThumbnailVtt(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr>  getTags(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr>  addTag(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr>  removeTag(HttpRequestPtr req, std::string id);
   };
 }

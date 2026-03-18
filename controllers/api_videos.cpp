@@ -31,26 +31,38 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 	drogon::orm::Criteria criteria;
 
 	criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_status, drogon::orm::CompareOperator::EQ, (uint8_t)Status::completed);
-	if (userId.has_value()) {
+	if (userId.has_value() && !userId.value().empty()) {
 		criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_user_id, drogon::orm::CompareOperator::EQ, userId.value());
 	}
-	if (search.has_value()) {
+	if (search.has_value() && !search.value().empty()) {
+		if (search.value().length() > 1024) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+			resp->setBody("Search query is too long");
+			co_return resp;
+		}
 		std::string searchStr = "%" + search.value() + "%";
 		auto titleCriteria = drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_title, drogon::orm::CompareOperator::Like, searchStr);
 		auto descriptionCriteria = drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_description, drogon::orm::CompareOperator::Like, searchStr);
 		criteria = criteria && (titleCriteria || descriptionCriteria);
 	}
-	if (tag.has_value()) {
+	if (tag.has_value() && !tag.value().empty()) {
 		drogon::orm::CoroMapper<drogon_model::playbacq::Tags> tagMapper(drogon::app().getDbClient());
 		try {
 			auto tagObj = co_await tagMapper.findOne(drogon::orm::Criteria(drogon_model::playbacq::Tags::Cols::_name, drogon::orm::CompareOperator::EQ, tag.value()));
 			drogon::orm::CoroMapper<drogon_model::playbacq::VideoTags> videoTagMapper(drogon::app().getDbClient());
 			auto videoTags = co_await videoTagMapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::VideoTags::Cols::_tag_id, drogon::orm::CompareOperator::EQ, *tagObj.getTagId()));
+			if (videoTags.empty()) {
+				auto resp = drogon::HttpResponse::newHttpJsonResponse(Json::Value(Json::arrayValue));
+				resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+				co_return resp;
+			}
 			std::vector<std::string> videoIds;
 			for (const auto& videoTag : videoTags) {
 				videoIds.push_back(*videoTag.getVideoId());
 			}
 			criteria = criteria && drogon::orm::Criteria(drogon_model::playbacq::Videos::Cols::_video_id, drogon::orm::CompareOperator::In, videoIds);
+
 		}
 		catch (const std::exception& e) {
 			std::cerr << "DB Error: " << e.what() << std::endl;
@@ -492,6 +504,55 @@ drogon::Task<drogon::HttpResponsePtr> videos::addTag(HttpRequestPtr req, std::st
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
 		resp->setBody("Failed to add tag: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::removeTag(HttpRequestPtr req, std::string video_id) {
+	auto jsonPtr = req->getJsonObject();
+	if (!jsonPtr) {
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+		resp->setBody("Invalid JSON format");
+		co_return resp;
+	}
+	try {
+		std::string tagName = jsonPtr->get("tag", "NULL").asString();
+		drogon::orm::CoroMapper<drogon_model::playbacq::Tags> tagMapper(drogon::app().getDbClient());
+		auto tags = co_await tagMapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::Tags::Cols::_name, drogon::orm::CompareOperator::EQ, tagName));
+		if (tags.empty()) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+			resp->setBody("Tag not found");
+			co_return resp;
+		}
+		int32_t tagId = tags[0].getValueOfTagId();
+		// 動画と紐づかれているか再確認
+		drogon::orm::CoroMapper<drogon_model::playbacq::VideoTags> videoTagMapper(drogon::app().getDbClient());
+		auto videoTags = co_await videoTagMapper.findBy(
+			drogon::orm::Criteria(drogon_model::playbacq::VideoTags::Cols::_video_id, drogon::orm::CompareOperator::EQ, video_id) &&
+			drogon::orm::Criteria(drogon_model::playbacq::VideoTags::Cols::_tag_id, drogon::orm::CompareOperator::EQ, tagId)
+		);
+		if (videoTags.empty()) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+			resp->setBody("Tag not associated with this video");
+			co_return resp;
+		}
+		//問題がなければ関係解消
+		co_await videoTagMapper.deleteOne(videoTags[0]);
+
+		Json::Value ret;
+		ret["message"] = "Tag removed successfully";
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(ret);
+		resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to remove tag: " + std::string(e.what()));
 		co_return resp;
 	}
 }
