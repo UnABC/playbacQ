@@ -1,0 +1,31 @@
+FROM gcc:15.2 AS builder
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y \
+	git \
+	cmake \
+	uuid-dev \
+	zlib1g-dev \
+	libssl-dev \
+	libjsoncpp-dev \
+	libzstd-dev \
+	libhiredis-dev \
+	libboost-dev \
+	libboost-system-dev \
+	libboost-filesystem-dev \
+	default-libmysqlclient-dev \
+	libcurl4-openssl-dev \
+	ffmpeg \
+	&& rm -rf /var/lib/apt/lists/*
+RUN git clone https://github.com/sewenew/redis-plus-plus.git \
+	&& cd redis-plus-plus \
+	&& mkdir build && cd build \
+	&& cmake .. && make -j$(nproc) && make install
+RUN git clone https://github.com/drogonframework/drogon \
+	&& cd drogon \
+	&& git submodule update --init \
+	&& mkdir build && cd build && cmake .. && make -j$(nproc) && make install
+RUN git clone --recurse-submodules --depth 1 https://github.com/aws/aws-sdk-cpp.git \
+	&& cd aws-sdk-cpp \
+	&& mkdir build && cd build \
+	&& cmake .. -DBUILD_ONLY="s3" -DBUILD_SHARED_LIBS=OFF -DENABLE_TESTING=OFF -DCMAKE_BUILD_TYPE=Release \
+	&& make -j$(nproc) && make install
