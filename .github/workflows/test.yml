@@ -18,7 +18,7 @@ jobs:
           sleep 15 # データベースが完全に起動するまで待機
       - name: Build and Run Tests
         run: |
-          docker compose -f docker-compose.test.yml run --rm -T app bash -c "
+          docker compose -f docker-compose.test.yml run --rm -T test-runner bash -c "
             mkdir -p build && cd build &&
             cmake .. && make -j\$(nproc) &&
             ./test/playbacq_test
