@@ -6,6 +6,19 @@ int main() {
     //Set HTTP listener address and port
     drogon::app().addListener("0.0.0.0", 8080);
     //Load config file
+    const char* dbUserEnv = std::getenv("DB_USER");
+    const char* dbPassEnv = std::getenv("DB_PASSWORD");
+    std::string dbUser = dbUserEnv ? dbUserEnv : "DEFAULT_USER";
+    std::string dbPass = dbPassEnv ? dbPassEnv : "DEFAULT_PASSWORD";
+    drogon::orm::MysqlConfig config;
+    config.host = "db";
+    config.port = 3306;
+    config.databaseName = "playbacq";
+    config.username = dbUser;
+    config.password = dbPass;
+    config.connectionNumber = 3;
+    config.name = "default";
+    drogon::app().addDbClient(config);
     drogon::app().loadConfigFile("../config.json");
 
     drogon::app().getLoop()->runEvery(60.0, []() {
