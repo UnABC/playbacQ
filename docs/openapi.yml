@@ -193,7 +193,7 @@ paths:
             schema:
               type: object
               properties:
-                commentId:
+                comment_id:
                   type: integer
                   description: "削除するコメントのID"
       responses:
@@ -586,11 +586,11 @@ components:
     Comment:
       type: object
       properties:
-        id:
+        comment_id:
           type: integer
           readOnly: true
           description: "コメントのID"
-        content:
+        comment:
           type: string
           description: "コメントの内容"
         timestamp:

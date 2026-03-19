@@ -358,3 +358,61 @@ DROGON_TEST(ProgressTest)
 	CHECK((*getJson)["progress"].asInt() == 75);
 	CHECK((*getJson)["status"].asInt() == 1);
 }
+
+DROGON_TEST(CommentTest)
+{
+	clearDatabase();
+	std::optional<std::string> videoIdOpt = postVideo("コメントテスト");
+	REQUIRE(videoIdOpt.has_value());
+	std::string videoId = videoIdOpt.value();
+	Json::Value commentBody;
+	commentBody["content"] = "テストコメント";
+	commentBody["timestamp"] = 10.02;
+	commentBody["command"] = "red ue";
+	auto commentResp = sendSyncRequest(drogon::Post, "/api/videos/" + videoId + "/comments", commentBody);
+	REQUIRE(commentResp != nullptr);
+	CHECK(commentResp->getStatusCode() == drogon::k201Created);
+	auto commentJson = commentResp->getJsonObject();
+	REQUIRE(commentJson != nullptr);
+	CHECK((*commentJson)["comment"].asString() == "テストコメント");
+	CHECK((*commentJson)["timestamp"].asDouble() == 10.02);
+	CHECK((*commentJson)["command"].asString() == "red ue");
+	// コメント追加
+	commentBody["content"] = "2つ目のコメント";
+	commentBody["timestamp"] = 20.05;
+	commentBody["command"] = "blue shita";
+	commentResp = sendSyncRequest(drogon::Post, "/api/videos/" + videoId + "/comments", commentBody);
+	REQUIRE(commentResp != nullptr);
+	CHECK(commentResp->getStatusCode() == drogon::k201Created);
+	// コメント取得
+	auto getCommentsResp = sendSyncRequest(drogon::Get, "/api/videos/" + videoId + "/comments");
+	REQUIRE(getCommentsResp != nullptr);
+	CHECK(getCommentsResp->getStatusCode() == drogon::k200OK);
+	auto getCommentsJson = getCommentsResp->getJsonObject();
+	REQUIRE(getCommentsJson != nullptr);
+	CHECK(getCommentsJson->isArray());
+	CHECK(getCommentsJson->size() == 2);
+	CHECK((*getCommentsJson)[0]["comment"].asString() == "テストコメント");
+	CHECK((*getCommentsJson)[0]["timestamp"].asDouble() == 10.02);
+	CHECK((*getCommentsJson)[0]["command"].asString() == "red ue");
+	CHECK((*getCommentsJson)[1]["comment"].asString() == "2つ目のコメント");
+	CHECK((*getCommentsJson)[1]["timestamp"].asDouble() == 20.05);
+	CHECK((*getCommentsJson)[1]["command"].asString() == "blue shita");
+	// コメント削除
+	Json::Value deleteCommentBody;
+	deleteCommentBody["comment_id"] = (*getCommentsJson)[0]["comment_id"].asInt();
+	auto deleteCommentResp = sendSyncRequest(drogon::Delete, "/api/videos/" + videoId + "/comments", deleteCommentBody);
+	REQUIRE(deleteCommentResp != nullptr);
+	CHECK(deleteCommentResp->getStatusCode() == drogon::k200OK);
+	// コメント削除確認
+	getCommentsResp = sendSyncRequest(drogon::Get, "/api/videos/" + videoId + "/comments");
+	REQUIRE(getCommentsResp != nullptr);
+	CHECK(getCommentsResp->getStatusCode() == drogon::k200OK);
+	getCommentsJson = getCommentsResp->getJsonObject();
+	REQUIRE(getCommentsJson != nullptr);
+	CHECK(getCommentsJson->isArray());
+	CHECK(getCommentsJson->size() == 1);
+	CHECK((*getCommentsJson)[0]["comment"].asString() == "2つ目のコメント");
+	CHECK((*getCommentsJson)[0]["timestamp"].asDouble() == 20.05);
+	CHECK((*getCommentsJson)[0]["command"].asString() == "blue shita");
+}

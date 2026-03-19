@@ -125,6 +125,9 @@ drogon::Task<drogon::HttpResponsePtr> comments::deleteComment(HttpRequestPtr req
             resp->setBody("Failed to delete comment");
             co_return resp;
         }
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+        co_return resp;
     }
     catch (const drogon::orm::UnexpectedRows& e) {
         auto resp = drogon::HttpResponse::newHttpResponse();
