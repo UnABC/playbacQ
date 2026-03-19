@@ -27,3 +27,6 @@ jobs:
       - name: Tear down environment
         if: always()
         run: docker compose -f docker-compose.test.yml down
+      - name: Print DB logs if failed
+        if: failure()
+        run: docker compose -f docker-compose.test.yml logs db

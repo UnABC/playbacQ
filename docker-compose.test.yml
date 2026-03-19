@@ -13,6 +13,10 @@ services:
       - MINIO_ROOT_USER=test_minio
       - MINIO_ROOT_PASSWORD=test_minio_pass
       - MINIO_ENDPOINT=test-minio:9000
+      - MYSQL_ROOT_PASSWORD=test_root_pass
+      - MYSQL_DATABASE=playbacq_test
+      - MYSQL_USER=test_user
+      - MYSQL_PASSWORD=test_pass
     depends_on:
       - test-db
       - test-redis
