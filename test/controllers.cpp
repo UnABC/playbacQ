@@ -6,8 +6,10 @@
 #include <aws/s3/model/PutObjectRequest.h>
 #include <drogon/drogon.h>
 #include <drogon/nosql/RedisClient.h>
+#include <drogon/WebSocketClient.h>
 #include <future>
 #include <iostream>
+#include "../controllers/websocket_comments.h"
 
 drogon::HttpResponsePtr sendSyncRequest(
 	drogon::HttpMethod method,
@@ -46,7 +48,7 @@ drogon::HttpResponsePtr sendSyncRequest(
 	return future.get();
 }
 
-void uploadDummyM3u8ToMinIO(const std::string& videoId, const std::string& content) {
+void uploadDummyFileToMinIO(const std::string& key, const std::string& content) {
 	Aws::Client::ClientConfiguration clientConfig;
 	clientConfig.region = "us-east-1";
 	const char* envEndpoint = std::getenv("MINIO_ENDPOINT");
@@ -68,7 +70,7 @@ void uploadDummyM3u8ToMinIO(const std::string& videoId, const std::string& conte
 
 	Aws::S3::Model::PutObjectRequest request;
 	request.SetBucket("videos");
-	request.SetKey("hls/" + videoId + "/output.m3u8");
+	request.SetKey(key);
 
 	auto inputData = Aws::MakeShared<Aws::StringStream>("PutObjectInputStream");
 	*inputData << content;
@@ -76,14 +78,13 @@ void uploadDummyM3u8ToMinIO(const std::string& videoId, const std::string& conte
 
 	auto outcome = s3Client.PutObject(request);
 	if (!outcome.IsSuccess()) {
-		std::cerr << "Failed to upload dummy M3U8 to S3: "
-			<< outcome.GetError().GetMessage() << std::endl;
+		std::cerr << "Failed to upload dummy file to MinIO: " << outcome.GetError().GetMessage() << std::endl;
 	} else {
-		std::cerr << "Successfully uploaded dummy M3U8 to S3" << std::endl;
+		std::cout << "Successfully uploaded dummy file to MinIO with key: " << key << std::endl;
 	}
 }
 
-std::optional<std::string> postVideo(std::string title, std::string description = "This is a test video.") {
+std::optional<std::string> postVideo(const std::string& title, const std::string& description = "This is a test video.", const bool sendWebhook = true) {
 	Json::Value createBody;
 	createBody["title"] = title;
 	createBody["description"] = description;
@@ -104,13 +105,14 @@ std::optional<std::string> postVideo(std::string title, std::string description 
 	std::string videoId = (*createdJson)["video_id"].asString();
 
 	// Webhookを送信してステータスをCompletedにする
-	Json::Value webhookBody;
-	webhookBody["video_id"] = videoId;
-	webhookBody["status"] = "completed";
-	webhookBody["message"] = "success";
-	webhookBody["duration"] = 120;
-	sendSyncRequest(drogon::Post, "/webhooks/encode_result", webhookBody);
-
+	if (sendWebhook) {
+		Json::Value webhookBody;
+		webhookBody["video_id"] = videoId;
+		webhookBody["status"] = "completed";
+		webhookBody["message"] = "success";
+		webhookBody["duration"] = 120;
+		sendSyncRequest(drogon::Post, "/webhooks/encode_result", webhookBody);
+	}
 	return videoId;
 }
 
@@ -324,7 +326,7 @@ DROGON_TEST(WebhookTest)
 		"#EXT-X-VERSION:3\n"
 		"#EXT-X-MAP:URI=\"init.mp4\"\n"
 		"segment0.ts\n";
-	uploadDummyM3u8ToMinIO(videoId, dummyM3u8);
+	uploadDummyFileToMinIO("hls/" + videoId + "/output.m3u8", dummyM3u8);
 	auto playResp = sendSyncRequest(drogon::Get, "/api/videos/" + videoId + "/play");
 	REQUIRE(playResp != nullptr);
 	CHECK(playResp->getStatusCode() == drogon::k200OK);
@@ -650,4 +652,111 @@ DROGON_TEST(AuthTest)
 	deleteVideoResp = sendSyncRequest(drogon::Delete, "/api/videos", deleteVideoBody, {}, "testuser");
 	REQUIRE(deleteVideoResp != nullptr);
 	CHECK(deleteVideoResp->getStatusCode() == drogon::k200OK);
+}
+
+DROGON_TEST(VttTest)
+{
+	clearDatabase();
+	std::optional<std::string> videoIdOpt = postVideo("VTTテスト");
+	REQUIRE(videoIdOpt.has_value());
+	std::string videoId = videoIdOpt.value();
+	std::string dummyVtt =
+		"WEBVTT\n\n"
+		"00:00:00.000 --> 00:00:05.000\n"
+		"テスト字幕です。\n";
+	uploadDummyFileToMinIO("hls/" + videoId + "/thumbnails.vtt", dummyVtt);
+	auto resp = sendSyncRequest(drogon::Get, "/api/videos/" + videoId + "/vtt");
+	REQUIRE(resp != nullptr);
+	CHECK(resp->getStatusCode() == drogon::k200OK);
+	CHECK(resp->getHeader("Content-Type") == "text/vtt");
+	CHECK(std::string(resp->getBody()) == dummyVtt);
+}
+
+DROGON_TEST(WebhookMinioTest)
+{
+	clearDatabase();
+	std::optional<std::string> videoIdOpt = postVideo("Webhook MinIOテスト", "MinIOにファイルがアップロードされるかのテスト", false);
+	REQUIRE(videoIdOpt.has_value());
+	std::string videoId = videoIdOpt.value();
+	// MinIOにファイルがアップロードされたことを模倣したWebhookを送信
+	Json::Value payload;
+	Json::Value s3Object;
+	s3Object["key"] = videoId + ".mp4";
+	Json::Value s3;
+	s3["object"] = s3Object;
+	Json::Value record;
+	record["eventName"] = "s3:ObjectCreated:Put";
+	record["s3"] = s3;
+	payload["Records"].append(record);
+	auto resp = sendSyncRequest(drogon::Post, "/webhooks/minio", payload);
+	REQUIRE(resp != nullptr);
+	CHECK(resp->getStatusCode() == drogon::k200OK);
+	// 動画のステータスがエンコード待ちになっていることを確認
+	auto dbClient = drogon::app().getDbClient();
+	auto dbResult = dbClient->execSqlSync("SELECT status FROM videos WHERE video_id = ?", videoId);
+	REQUIRE(dbResult.size() == 1);
+	CHECK(dbResult[0]["status"].as<int>() == 1);
+	// Redisにエンコード待ちのキーがセットされていることを確認
+	auto redisClient = drogon::app().getRedisClient();
+	REQUIRE(redisClient != nullptr);
+	std::promise<std::optional<std::string>> redisProm;
+	auto redisFut = redisProm.get_future();
+	// RPOPを使って、キューの右側（LPUSHされた反対側）からデータを取り出して検証
+	redisClient->execCommandAsync(
+		[&redisProm](const drogon::nosql::RedisResult& r) {
+			if (r.isNil()) {
+				redisProm.set_value(std::nullopt);
+			} else {
+				redisProm.set_value(r.asString());
+			}
+		},
+		[&redisProm](const std::exception& e) {
+			redisProm.set_value(std::nullopt);
+		},
+		"RPOP encode_queue" // LPUSHされたIDを取り出す
+	);
+
+	auto poppedVideoId = redisFut.get();
+	REQUIRE(poppedVideoId.has_value());
+	CHECK(poppedVideoId.value() == videoId);
+}
+
+DROGON_TEST(WebsocketTest)
+{
+	clearDatabase();
+	std::optional<std::string> videoIdOpt = postVideo("WebSocketテスト");
+	REQUIRE(videoIdOpt.has_value());
+	std::string videoId = videoIdOpt.value();
+
+	auto wsClient = drogon::WebSocketClient::newWebSocketClient("127.0.0.1", 8080);
+	auto req = drogon::HttpRequest::newHttpRequest();
+	req->setPath("/ws/comments");
+	req->setParameter("video_id", videoId);
+	std::promise<void> connectProm;
+	std::promise<std::string> messageProm;
+	wsClient->setMessageHandler([&messageProm](const std::string& message,
+		const drogon::WebSocketClientPtr&,
+		const drogon::WebSocketMessageType&) {
+			std::cout << "Recieved message from server: " << message << std::endl;
+			messageProm.set_value(message);
+		});
+	wsClient->connectToServer(req,
+		[&connectProm](drogon::ReqResult r,
+			const drogon::HttpResponsePtr&,
+			const drogon::WebSocketClientPtr&) {
+				if (r == drogon::ReqResult::Ok) {
+					std::cerr << "Connected to WebSocket" << std::endl;
+					connectProm.set_value();
+				} else {
+					std::cerr << "Failed to connect to WebSocket" << std::endl;
+				}
+		});
+	connectProm.get_future().get();
+
+	std::string testMessage = "{\"user\":\"test_user\", \"comment\":\"テストコメント\"}";
+
+	CommentController::broadcastToRoom(videoId, testMessage);
+
+	std::string receivedMsg = messageProm.get_future().get();
+	CHECK(receivedMsg == testMessage);
 }

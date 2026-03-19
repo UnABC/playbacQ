@@ -333,7 +333,7 @@ paths:
     get:
       summary: "動画のサムネイルのWebVTTファイルの取得"
       operationId: getVideoThumbnailsVtt
-      x-tested: false
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -505,7 +505,7 @@ paths:
     post:
       summary: "動画アップロードの通知用"
       operationId: minioWebhook
-      x-tested: false
+      x-tested: true
       requestBody:
         required: true
         content:
@@ -544,7 +544,7 @@ paths:
         リアルタイムでコメントを受信するためのWebSocketエンドポイントです。
         ※このエンドポイントはHTTP GETリクエストからWebSocket(ws:// または wss://)へアップグレードされます。
         コメントの投稿自体は `POST /api/videos/{id}/comments` を使用してください。
-      x-tested: false
+      x-tested: true
       parameters:
         - name: video_id
           in: query
