@@ -13,7 +13,8 @@ drogon::HttpResponsePtr sendSyncRequest(
 	drogon::HttpMethod method,
 	const std::string& path,
 	const Json::Value& body = Json::Value::null,
-	const std::unordered_map<std::string, std::string>& queries = {}
+	const std::unordered_map<std::string, std::string>& queries = {},
+	const std::string& authUser = "testuser"
 ) {
 	auto client = drogon::HttpClient::newHttpClient("http://127.0.0.1:8080");
 	auto req = drogon::HttpRequest::newHttpRequest();
@@ -30,7 +31,7 @@ drogon::HttpResponsePtr sendSyncRequest(
 		req->setParameter(key, value);
 	}
 
-	req->addHeader("X-Forwarded-User", "testuser"); // 認証フィルタを通すためのヘッダ
+	req->addHeader("X-Forwarded-User", authUser); // 認証フィルタを通すためのヘッダ
 
 	std::promise<drogon::HttpResponsePtr> prom;
 	auto future = prom.get_future();
@@ -126,6 +127,25 @@ void clearDatabase() {
 	catch (const drogon::orm::DrogonDbException& e) {
 		std::cerr << "Failed to clear database: " << e.base().what() << std::endl;
 	}
+}
+
+std::optional<std::string> getRedisValueSync(const std::string& key) {
+	auto redisClient = drogon::app().getRedisClient();
+	std::promise<std::optional<std::string>> prom;
+	auto fut = prom.get_future();
+
+	redisClient->execCommandAsync(
+		[&prom](const drogon::nosql::RedisResult& r) {
+			if (r.isNil()) prom.set_value(std::nullopt);
+			else prom.set_value(r.asString());
+		},
+		[&prom](const std::exception& e) {
+			std::cerr << "Redis Error: " << e.what() << std::endl;
+			prom.set_value(std::nullopt);
+		},
+		"GET %s", key.c_str()
+	);
+	return fut.get();
 }
 
 DROGON_TEST(ApiVideosTest)
@@ -415,4 +435,219 @@ DROGON_TEST(CommentTest)
 	CHECK((*getCommentsJson)[0]["comment"].asString() == "2つ目のコメント");
 	CHECK((*getCommentsJson)[0]["timestamp"].asDouble() == 20.05);
 	CHECK((*getCommentsJson)[0]["command"].asString() == "blue shita");
+}
+
+DROGON_TEST(ViewCountIncTest)
+{
+	clearDatabase();
+	std::optional<std::string> videoIdOpt = postVideo("再生回数増加テスト");
+	REQUIRE(videoIdOpt.has_value());
+	std::string videoId = videoIdOpt.value();
+
+	auto playResp = sendSyncRequest(drogon::Post, "/api/videos/" + videoId + "/views");
+	REQUIRE(playResp != nullptr);
+	CHECK(playResp->getStatusCode() == drogon::k200OK);
+	auto json1 = playResp->getJsonObject();
+	REQUIRE(json1 != nullptr);
+	CHECK((*json1)["counted"].asBool() == true);
+	// 再生回数が1増えていることを確認
+	auto redisVal1 = getRedisValueSync("pending_views:" + videoId);
+	REQUIRE(redisVal1.has_value());
+	CHECK(redisVal1.value() == "1");
+	// 短時間で複数回再生しても再生回数が1しか増えないことを確認
+	auto resp2 = sendSyncRequest(drogon::Post, "/api/videos/" + videoId + "/views");
+	REQUIRE(resp2 != nullptr);
+	CHECK(resp2->getStatusCode() == drogon::k200OK);
+	auto json2 = resp2->getJsonObject();
+	REQUIRE(json2 != nullptr);
+	CHECK((*json2)["counted"].asBool() == false);
+	// 再生回数が増えていないことを確認
+	auto redisVal2 = getRedisValueSync("pending_views:" + videoId);
+	REQUIRE(redisVal2.has_value());
+	CHECK(redisVal2.value() == "1");
+}
+
+DROGON_TEST(ThumbnailTest)
+{
+	clearDatabase();
+	std::optional<std::string> videoIdOpt = postVideo("サムネイルテスト");
+	REQUIRE(videoIdOpt.has_value());
+	std::string videoId = videoIdOpt.value();
+	std::string thumbnailId = "thumbnail.jpg";
+	// vttファイルから呼び出されるAPIのテスト
+	auto resp = sendSyncRequest(drogon::Get, "/api/videos/" + videoId + "/thumbnails/" + thumbnailId);
+	REQUIRE(resp != nullptr);
+	CHECK(resp->getStatusCode() == drogon::k302Found);
+	std::string location = resp->getHeader("Location");
+	REQUIRE(!location.empty());
+
+	CHECK(location.find("hls/" + videoId + "/" + thumbnailId) != std::string::npos);
+	CHECK(location.find("X-Amz-Signature=") != std::string::npos);
+	CHECK(location.find("X-Amz-Credential=") != std::string::npos);
+	CHECK(location.find("X-Amz-Expires=") != std::string::npos);
+	// 存在しない動画のサムネイルをリクエストした場合404になることを確認
+	videoId = "nonexistent";
+	resp = sendSyncRequest(drogon::Get, "/api/videos/" + videoId + "/thumbnails/" + thumbnailId);
+	REQUIRE(resp != nullptr);
+	CHECK(resp->getStatusCode() == drogon::k404NotFound);
+	// もう一方のサムネイルAPIも同様にリダイレクトされることを確認
+	resp = sendSyncRequest(drogon::Get, "/api/videos/" + videoIdOpt.value() + "/thumbnail");
+	REQUIRE(resp != nullptr);
+	CHECK(resp->getStatusCode() == drogon::k302Found);
+	location = resp->getHeader("Location");
+	REQUIRE(!location.empty());
+
+	CHECK(location.find("hls/" + videoIdOpt.value() + "/thumbnail.jpg") != std::string::npos);
+	CHECK(location.find("X-Amz-Signature=") != std::string::npos);
+	CHECK(location.find("X-Amz-Credential=") != std::string::npos);
+	CHECK(location.find("X-Amz-Expires=") != std::string::npos);
+}
+
+DROGON_TEST(TagTest)
+{
+	clearDatabase();
+	std::optional<std::string> videoIdOpt = postVideo("タグテスト");
+	REQUIRE(videoIdOpt.has_value());
+	std::string videoId = videoIdOpt.value();
+	// タグを大量追加
+	std::vector<std::string> tags = { "かわいい", "かっこいい", "すばらしい", "すごい", "やばい" , "すんごい" };
+	for (const auto& tag : tags) {
+		Json::Value tagBody;
+		tagBody["tag"] = tag;
+		auto tagResp = sendSyncRequest(drogon::Post, "/api/videos/" + videoId + "/tags", tagBody);
+		REQUIRE(tagResp != nullptr);
+		CHECK(tagResp->getStatusCode() == drogon::k200OK);
+		auto tagJson = tagResp->getJsonObject();
+		REQUIRE(tagJson != nullptr);
+		CHECK((*tagJson)["name"].asString() == tag);
+	}
+	// 別の動画を用意
+	std::optional<std::string> videoId2Opt = postVideo("タグテスト2");
+	REQUIRE(videoId2Opt.has_value());
+	std::string videoId2 = videoId2Opt.value();
+	// タグを追加
+	std::vector<std::string> tags2 = { "すばらしい", "すごい", "やばい", "えぐい", "終わってる" };
+	for (const auto& tag : tags2) {
+		Json::Value tagBody;
+		tagBody["tag"] = tag;
+		auto tagResp = sendSyncRequest(drogon::Post, "/api/videos/" + videoId2 + "/tags", tagBody);
+		REQUIRE(tagResp != nullptr);
+		CHECK(tagResp->getStatusCode() == drogon::k200OK);
+		auto tagJson = tagResp->getJsonObject();
+		REQUIRE(tagJson != nullptr);
+		CHECK((*tagJson)["name"].asString() == tag);
+	}
+	// タグ検索
+	std::unordered_map<std::string, std::string> queries = {
+		{"query", "す"},
+	};
+	auto searchResp = sendSyncRequest(drogon::Get, "/api/tag", Json::Value::null, queries);
+	REQUIRE(searchResp != nullptr);
+	CHECK(searchResp->getStatusCode() == drogon::k200OK);
+	auto searchJson = searchResp->getJsonObject();
+	REQUIRE(searchJson != nullptr);
+	CHECK(searchJson->isArray());
+	CHECK(searchJson->size() == 3);
+	std::vector<std::string> expectedTags = { "すばらしい", "すごい", "すんごい" };
+	for (size_t i = 0; i < searchJson->size(); ++i) {
+		std::string tagName = ((*searchJson)[static_cast<int>(i)]["name"]).asString();
+		CHECK(std::ranges::contains(expectedTags, tagName));
+	}
+	// タグ削除
+	std::vector<int> deleteTagIds;
+	for (size_t i = 0; i < searchJson->size(); ++i) {
+		int tagId = (*searchJson)[static_cast<int>(i)]["tag_id"].asInt();
+		deleteTagIds.push_back(tagId);
+	}
+	for (int tagId : deleteTagIds) {
+		Json::Value deleteTagBody;
+		deleteTagBody["tag_id"] = tagId;
+		auto deleteTagResp = sendSyncRequest(drogon::Delete, "/api/tag", deleteTagBody);
+		REQUIRE(deleteTagResp != nullptr);
+		CHECK(deleteTagResp->getStatusCode() == drogon::k200OK);
+	}
+	// タグ削除確認
+	auto video1TagInfo = sendSyncRequest(drogon::Get, "/api/videos/" + videoId + "/tags");
+	REQUIRE(video1TagInfo != nullptr);
+	CHECK(video1TagInfo->getStatusCode() == drogon::k200OK);
+	auto video1TagInfoJson = video1TagInfo->getJsonObject();
+	REQUIRE(video1TagInfoJson != nullptr);
+	CHECK(video1TagInfoJson->isArray());
+	CHECK(video1TagInfoJson->size() == 3);
+	std::vector<std::string> expectedVideo1Tags = { "かわいい", "かっこいい", "やばい" };
+	for (size_t i = 0; i < video1TagInfoJson->size(); ++i) {
+		std::string tagName = ((*video1TagInfoJson)[static_cast<int>(i)]["name"]).asString();
+		CHECK(std::ranges::contains(expectedVideo1Tags, tagName));
+	}
+
+	auto video2TagInfo = sendSyncRequest(drogon::Get, "/api/videos/" + videoId2 + "/tags");
+	REQUIRE(video2TagInfo != nullptr);
+	CHECK(video2TagInfo->getStatusCode() == drogon::k200OK);
+	auto video2TagInfoJson = video2TagInfo->getJsonObject();
+	REQUIRE(video2TagInfoJson != nullptr);
+	CHECK(video2TagInfoJson->isArray());
+	CHECK(video2TagInfoJson->size() == 3);
+	std::vector<std::string> expectedVideo2Tags = { "やばい", "えぐい", "終わってる" };
+	for (size_t i = 0; i < video2TagInfoJson->size(); ++i) {
+		std::string tagName = ((*video2TagInfoJson)[static_cast<int>(i)]["name"]).asString();
+		CHECK(std::ranges::contains(expectedVideo2Tags, tagName));
+	}
+	// タグ検索しても削除したタグが出てこないことを確認
+	searchResp = sendSyncRequest(drogon::Get, "/api/tag", Json::Value::null, queries);
+	REQUIRE(searchResp != nullptr);
+	CHECK(searchResp->getStatusCode() == drogon::k200OK);
+	searchJson = searchResp->getJsonObject();
+	REQUIRE(searchJson != nullptr);
+	CHECK(searchJson->isArray());
+	CHECK(searchJson->size() == 0);
+}
+
+DROGON_TEST(AuthTest)
+{
+	clearDatabase();
+	// コメント削除権限の検証
+	std::optional<std::string> videoIdOpt = postVideo("認証テスト動画");
+	REQUIRE(videoIdOpt.has_value());
+	std::string videoId = videoIdOpt.value();
+	Json::Value commentBody;
+	commentBody["content"] = "認証テストコメント";
+	commentBody["timestamp"] = 5.0;
+	commentBody["command"] = "white ue";
+	auto commentResp = sendSyncRequest(drogon::Post, "/api/videos/" + videoId + "/comments", commentBody, {}, "comment_user");
+	REQUIRE(commentResp != nullptr);
+	CHECK(commentResp->getStatusCode() == drogon::k201Created);
+	auto commentJson = commentResp->getJsonObject();
+	REQUIRE(commentJson != nullptr);
+	int commentId = (*commentJson)["comment_id"].asInt();
+	// 別ユーザーでコメント削除を試みる
+	Json::Value deleteCommentBody;
+	deleteCommentBody["comment_id"] = commentId;
+	auto deleteCommentResp = sendSyncRequest(drogon::Delete, "/api/videos/" + videoId + "/comments", deleteCommentBody, {}, "other_user");
+	REQUIRE(deleteCommentResp != nullptr);
+	CHECK(deleteCommentResp->getStatusCode() == drogon::k403Forbidden);
+	// コメント投稿ユーザーでコメント削除を試みる
+	deleteCommentResp = sendSyncRequest(drogon::Delete, "/api/videos/" + videoId + "/comments", deleteCommentBody, {}, "comment_user");
+	REQUIRE(deleteCommentResp != nullptr);
+	CHECK(deleteCommentResp->getStatusCode() == drogon::k200OK);
+	// もう一度コメント投稿
+	commentResp = sendSyncRequest(drogon::Post, "/api/videos/" + videoId + "/comments", commentBody, {}, "comment_user");
+	REQUIRE(commentResp != nullptr);
+	CHECK(commentResp->getStatusCode() == drogon::k201Created);
+	commentJson = commentResp->getJsonObject();
+	REQUIRE(commentJson != nullptr);
+	commentId = (*commentJson)["comment_id"].asInt();
+	deleteCommentBody["comment_id"] = commentId;
+	// 動画投稿ユーザーでコメント削除を試みる
+	deleteCommentResp = sendSyncRequest(drogon::Delete, "/api/videos/" + videoId + "/comments", deleteCommentBody, {}, "testuser");
+	REQUIRE(deleteCommentResp != nullptr);
+	CHECK(deleteCommentResp->getStatusCode() == drogon::k200OK);
+	// 動画の削除の検証
+	Json::Value deleteVideoBody;
+	deleteVideoBody["video_id"] = videoId;
+	auto deleteVideoResp = sendSyncRequest(drogon::Delete, "/api/videos", deleteVideoBody, {}, "other_user");
+	REQUIRE(deleteVideoResp != nullptr);
+	CHECK(deleteVideoResp->getStatusCode() == drogon::k403Forbidden);
+	deleteVideoResp = sendSyncRequest(drogon::Delete, "/api/videos", deleteVideoBody, {}, "testuser");
+	REQUIRE(deleteVideoResp != nullptr);
+	CHECK(deleteVideoResp->getStatusCode() == drogon::k200OK);
 }

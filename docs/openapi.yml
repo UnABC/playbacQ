@@ -16,6 +16,7 @@ paths:
     get:
       summary: "動画一覧の取得"
       operationId: getVideos
+      x-tested: true
       parameters:
         - schema:
             type: "string"
@@ -54,6 +55,7 @@ paths:
     post:
       summary: "動画の投稿"
       operationId: createVideo
+      x-tested: true
       requestBody:
         required: true
         content:
@@ -82,6 +84,7 @@ paths:
       summary: "動画の削除"
       description: "動画とそれに関連するデータ(コメント、タグなど)を削除します。タグそのものは消えません。動画の投稿者のみが削除できます。"
       operationId: deleteVideo
+      x-tested: true
       parameters:
         - name: id
           in: query
@@ -101,6 +104,7 @@ paths:
     get:
       summary: "動画の取得"
       operationId: getVideoById
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -123,6 +127,7 @@ paths:
     get:
       summary: "動画のコメントの取得"
       operationId: getCommentsByVideoId
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -144,6 +149,7 @@ paths:
     post:
       summary: "動画のコメントの投稿"
       operationId: createComment
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -179,6 +185,7 @@ paths:
       summary: "動画のコメントの削除"
       description: "動画のコメントを削除します。コメントしたユーザーまたは動画の投稿者のみが削除できます。"
       operationId: deleteComment
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -207,6 +214,7 @@ paths:
     get:
       summary: "動画のアップロードの進捗の取得"
       operationId: getVideoProgress
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -237,6 +245,7 @@ paths:
     get:
       summary: "署名付きurlを含む.m3u8ファイルの取得"
       operationId: getVideoPlayUrl
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -260,6 +269,7 @@ paths:
     post:
       summary: "動画の再生回数のインクリメント"
       operationId: incrementVideoViewCount
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -278,6 +288,7 @@ paths:
     get:
       summary: "動画のサムネ画像へのリダイレクト"
       operationId: getVideoThumbnail
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -297,6 +308,7 @@ paths:
       summary: "サムネイル画像へリダイレクト"
       operationId: getVideoThumbnailUrl
       description: "サムネイル画像のURLを返すのではなく、直接サムネイル画像へリダイレクトします。これはWebTTファイル内でのみ使用します。"
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -321,6 +333,7 @@ paths:
     get:
       summary: "動画のサムネイルのWebVTTファイルの取得"
       operationId: getVideoThumbnailsVtt
+      x-tested: false
       parameters:
         - name: id
           in: path
@@ -344,6 +357,7 @@ paths:
     get:
       summary: "動画のタグの取得"
       operationId: getVideoTags
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -372,6 +386,7 @@ paths:
     post:
       summary: "動画のタグの追加"
       operationId: addVideoTag
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -409,6 +424,7 @@ paths:
       summary: "動画のタグの削除"
       description: "動画からタグを削除します。タグそのものは消えません。"
       operationId: deleteVideoTag
+      x-tested: true
       parameters:
         - name: id
           in: path
@@ -437,6 +453,7 @@ paths:
     get:
       summary: "タグの検索"
       operationId: searchTags
+      x-tested: true
       parameters:
         - name: query
           in: query
@@ -466,6 +483,7 @@ paths:
       summary: "タグの削除"
       description: "タグを完全に削除します。タグが付いている動画からもタグが消えます。"
       operationId: deleteTag
+      x-tested: true
       requestBody:
         required: true
         content:
@@ -487,6 +505,7 @@ paths:
     post:
       summary: "動画アップロードの通知用"
       operationId: minioWebhook
+      x-tested: false
       requestBody:
         required: true
         content:
@@ -497,6 +516,7 @@ paths:
     post:
       summary: "動画エンコードの完了通知用"
       operationId: encodeResultWebhook
+      x-tested: true
       requestBody:
         required: true
         content:
@@ -524,6 +544,7 @@ paths:
         リアルタイムでコメントを受信するためのWebSocketエンドポイントです。
         ※このエンドポイントはHTTP GETリクエストからWebSocket(ws:// または wss://)へアップグレードされます。
         コメントの投稿自体は `POST /api/videos/{id}/comments` を使用してください。
+      x-tested: false
       parameters:
         - name: video_id
           in: query

@@ -450,6 +450,9 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnails([[maybe_unused]
 	// サムネイル画像へリダイレクト
 	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 	try {
+		// 動画が存在するか確認
+		auto video = co_await mapper.findByPrimaryKey(id);
+
 		auto s3Plugin = drogon::app().getPlugin<S3Plugin>();
 		std::string presigned_url = s3Plugin->genPresignedGetUrl("hls/" + id + "/" + filename, 60);
 
