@@ -1,0 +1,50 @@
+services:
+  test-runner:
+    build:
+      context: .
+      target: builder
+    volumes:
+      - .:/app
+    environment:
+      - DB_HOST=test-db
+      - REDIS_HOST=test-redis
+      - DB_USER=test_user
+      - DB_PASSWORD=test_pass
+      - MINIO_ROOT_USER=test_minio
+      - MINIO_ROOT_PASSWORD=test_minio_pass
+      - MINIO_ENDPOINT=test-minio:9000
+    depends_on:
+      - test-db
+      - test-redis
+      - test-minio
+    # テストのビルドと実行を行うコマンド
+    command: >
+      bash -c "mkdir -p build_test && cd build_test && 
+      cmake -DBUILD_TESTING=ON .. && 
+      make -j$$(nproc) && 
+      ctest --output-on-failure"
+
+  test-db:
+    image: mysql:8.0
+    tmpfs:
+      - /var/lib/mysql # データをすべてメモリ上に配置
+    environment:
+      - MYSQL_DATABASE=playbacq_test
+      - MYSQL_USER=test_user
+      - MYSQL_PASSWORD=test_pass
+      - MYSQL_ROOT_PASSWORD=test_root_pass
+    # テスト時のみ必要な初期化スクリプトをマウント
+
+  test-redis:
+    image: redis:7-alpine
+    tmpfs:
+      - /data
+
+  test-minio:
+    image: minio/minio:latest
+    command: server /data
+    tmpfs:
+      - /data # MinIOのオブジェクトもすべてメモリ上に配置
+    environment:
+      - MINIO_ROOT_USER=test_minio
+      - MINIO_ROOT_PASSWORD=test_minio_pass

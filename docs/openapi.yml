@@ -547,7 +547,7 @@ components:
           format: date-time
           readOnly: true
           description: "動画の作成日時"
-        id:
+        video_id:
           type: string
           readOnly: true
           description: "動画のID"

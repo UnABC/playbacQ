@@ -27,7 +27,8 @@
         "DavidAnson.vscode-markdownlint",
         "bierner.markdown-mermaid",
         "esbenp.prettier-vscode",
-        "mosapride.zenkaku"
+        "mosapride.zenkaku",
+        "KylinIdeTeam.cmake-intellisence"
       ]
     }
   }
