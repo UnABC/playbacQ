@@ -21,7 +21,7 @@ jobs:
           docker compose -f docker-compose.test.yml run --rm -T test-runner bash -c "
             mkdir -p build && cd build &&
             cmake .. && make -j\$(nproc) &&
-            ./test/playbacq_test
+            cd .. && ./build/test/playbacq_test
           "
       - name: Tear down environment
         if: always()
