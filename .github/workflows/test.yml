@@ -19,14 +19,10 @@ jobs:
           sleep 5 # データベースが完全に起動するまで待機
       - name: Build and Run Tests
         run: |
-          docker compose -f docker-compose.test.yml run --rm -T test-runner bash -c "
-            mkdir -p build && cd build &&
-            cmake .. && make -j\$(nproc) &&
-            cd .. && ./build/test/playbacq_test
-          "
+          docker compose -f docker-compose.test.yml up --build --abort-on-container-exit test-runner
       - name: Tear down environment
         if: always()
         run: docker compose -f docker-compose.test.yml down
       - name: Print DB logs if failed
         if: failure()
-        run: docker compose -f docker-compose.test.yml logs db-test
+        run: docker compose -f docker-compose.test.yml logs test-db

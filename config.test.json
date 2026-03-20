@@ -1,0 +1,19 @@
+{
+	"plugins": [
+		{
+			"name": "S3Plugin",
+			"dependencies": [],
+			"config": {}
+		}
+	],
+	"redis_clients": [
+		{
+			"name": "default",
+			"host": "test-redis",
+			"port": 6379
+		}
+	],
+	"custom_config": {
+		"baseUrl": "http://127.0.0.1:8080"
+	}
+}

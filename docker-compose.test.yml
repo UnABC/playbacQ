@@ -8,6 +8,7 @@ services:
     environment:
       - DB_HOST=test-db
       - REDIS_HOST=test-redis
+      - REDIS_PORT=6379
       - DB_USER=test_user
       - DB_PASSWORD=test_pass
       - MINIO_ROOT_USER=test_minio
@@ -18,31 +19,56 @@ services:
       - MYSQL_USER=test_user
       - MYSQL_PASSWORD=test_pass
     depends_on:
-      - test-db
-      - test-redis
-      - test-minio
+      test-db:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+      test-minio:
+        condition: service_healthy
+      test-minio-init:
+        condition: service_completed_successfully
     # テストのビルドと実行を行うコマンド
     command: >
-      bash -c "mkdir -p build_test && cd build_test && 
+      bash -c "mkdir -p build/test && cd build/test && 
       cmake -DBUILD_TESTING=ON .. && 
       make -j$$(nproc) && 
-      ctest --output-on-failure"
+      ctest --output-on-failure -VV"
 
   test-db:
     image: mysql:8.0
     tmpfs:
       - /var/lib/mysql # データをすべてメモリ上に配置
+    volumes:
+      - ./docker/init.test.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       - MYSQL_DATABASE=playbacq_test
       - MYSQL_USER=test_user
       - MYSQL_PASSWORD=test_pass
       - MYSQL_ROOT_PASSWORD=test_root_pass
-    # テスト時のみ必要な初期化スクリプトをマウント
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "test_user",
+          "-ptest_pass",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   test-redis:
     image: redis:7-alpine
-    tmpfs:
-      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
 
   test-minio:
     image: minio/minio:latest
@@ -52,3 +78,24 @@ services:
     environment:
       - MINIO_ROOT_USER=test_minio
       - MINIO_ROOT_PASSWORD=test_minio_pass
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
+
+  test-minio-init:
+    image: minio/mc:latest
+    depends_on:
+      test-minio:
+        condition: service_healthy
+    environment:
+      - MINIO_ROOT_USER=test_minio
+      - MINIO_ROOT_PASSWORD=test_minio_pass
+    entrypoint: >
+      sh -c "
+        mc alias set testminio http://test-minio:9000 test_minio test_minio_pass &&
+        mc mb testminio/videos --ignore-existing &&
+        mc mb testminio/videofiles --ignore-existing &&
+        mc anonymous set download testminio/videofiles
+      "

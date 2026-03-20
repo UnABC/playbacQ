@@ -16,4 +16,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}
 )
 
-ParseAndAddDrogonTests(${PROJECT_NAME})
+# Register the test executable with CTest
+enable_testing()
+add_test(
+    NAME playbacq_test
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/playbacq_test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)

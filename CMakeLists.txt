@@ -85,9 +85,18 @@ target_include_directories(playbacq_core PUBLIC
 )
 
 add_executable(${PROJECT_NAME} main.cpp)
+
+# Enable testing
+enable_testing()
+
+# Add tests if BUILD_TESTING is enabled
+if(BUILD_TESTING)
+    add_subdirectory(test)
+else()
+    # Still need to add subdirectory for non-test builds
+    # but mark it optional
+endif()
 target_compile_options(${PROJECT_NAME} PRIVATE
-    -Wall -Wextra -Wpedantic -O3
+    -Wall -Wextra -Wpedantic -O3 -g3
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE playbacq_core)
-
-add_subdirectory(test)

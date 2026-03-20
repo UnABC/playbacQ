@@ -13,20 +13,16 @@ int main(int argc, char** argv)
     std::thread thr([&]() {
         // Queues the promise to be fulfilled after starting the loop
         drogon::app().addListener("127.0.0.1", 8080);
-        const char* dbUserEnv = std::getenv("DB_USER");
-        const char* dbPassEnv = std::getenv("DB_PASSWORD");
-        std::string dbUser = dbUserEnv ? dbUserEnv : "DEFAULT_USER";
-        std::string dbPass = dbPassEnv ? dbPassEnv : "DEFAULT_PASSWORD";
         drogon::orm::MysqlConfig config;
-        config.host = "db";
+        config.host = "test-db";
         config.port = 3306;
-        config.databaseName = "playbacq";
-        config.username = dbUser;
-        config.password = dbPass;
+        config.databaseName = "playbacq_test";
+        config.username = "test_user";
+        config.password = "test_pass";
         config.connectionNumber = 3;
         config.name = "default";
         drogon::app().addDbClient(config);
-        app().loadConfigFile("config.json");
+        app().loadConfigFile("config.test.json");
         app().getLoop()->queueInLoop([&p1]() { p1.set_value(); });
         app().run();
         });
