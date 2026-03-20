@@ -15,7 +15,7 @@ jobs:
         run: |
           docker compose -f docker-compose.test.yml up -d
           echo "Waiting for databases to start..."
-          timeout 60 bash -c 'until docker compose -f docker-compose.test.yml exec -T db-test mysqladmin ping -h localhost --silent; do sleep 2; done'
+          timeout 60 bash -c 'until docker compose -f docker-compose.test.yml exec -T test-db mysqladmin ping -h localhost --silent; do sleep 2; done'
           sleep 5 # データベースが完全に起動するまで待機
       - name: Build and Run Tests
         run: |
