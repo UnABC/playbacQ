@@ -97,6 +97,6 @@ else()
     # but mark it optional
 endif()
 target_compile_options(${PROJECT_NAME} PRIVATE
-    -Wall -Wextra -Wpedantic -O3 -g3
+    -Wall -Wextra -Wpedantic -O3
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE playbacq_core)

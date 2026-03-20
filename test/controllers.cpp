@@ -116,21 +116,6 @@ std::optional<std::string> postVideo(const std::string& title, const std::string
 	return videoId;
 }
 
-void clearDatabase() {
-	auto dbClient = drogon::app().getDbClient();
-	try {
-		dbClient->execSqlSync("DELETE FROM comments");
-		dbClient->execSqlSync("DELETE FROM video_tags");
-		dbClient->execSqlSync("DELETE FROM tags");
-		dbClient->execSqlSync("DELETE FROM videos");
-
-		std::cerr << "Cleared database" << std::endl;
-	}
-	catch (const drogon::orm::DrogonDbException& e) {
-		std::cerr << "Failed to clear database: " << e.base().what() << std::endl;
-	}
-}
-
 std::optional<std::string> getRedisValueSync(const std::string& key) {
 	auto redisClient = drogon::app().getRedisClient();
 	std::promise<std::optional<std::string>> prom;
@@ -150,10 +135,16 @@ std::optional<std::string> getRedisValueSync(const std::string& key) {
 	return fut.get();
 }
 
+bool deleteVideo(const std::string& videoId, const std::string& authUser = "testuser") {
+	Json::Value deleteBody;
+	deleteBody["video_id"] = videoId;
+	auto deleteResp = sendSyncRequest(drogon::Delete, "/api/videos", deleteBody, {}, authUser);
+	return deleteResp != nullptr && deleteResp->getStatusCode() == drogon::k200OK;
+}
+
 DROGON_TEST(ApiVideosTest)
 {
 	// POST,GET,DELETE api/videosのE2Eテスト
-	clearDatabase();
 	std::optional<std::string> videoIdOpt = postVideo("テスト動画");
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
@@ -165,11 +156,7 @@ DROGON_TEST(ApiVideosTest)
 	CHECK((*getJson)["title"].asString() == "テスト動画");
 	CHECK((*getJson)["description"].asString() == "This is a test video.");
 
-	Json::Value deleteBody;
-	deleteBody["video_id"] = videoId;
-	auto deleteResp = sendSyncRequest(drogon::Delete, "/api/videos", deleteBody);
-	REQUIRE(deleteResp != nullptr);
-	CHECK(deleteResp->getStatusCode() == drogon::k200OK);
+	CHECK(deleteVideo(videoId) == true);
 
 	auto confirmResp = sendSyncRequest(drogon::Get, "/api/videos/" + videoId);
 	REQUIRE(confirmResp != nullptr);
@@ -178,7 +165,6 @@ DROGON_TEST(ApiVideosTest)
 
 DROGON_TEST(SearchTest)
 {
-	clearDatabase();
 	// 動画を投稿
 	std::optional<std::string> videoId1Opt = postVideo("1猫の動画", "にゃーん");
 	std::optional<std::string> videoId2Opt = postVideo("2犬の動画", "きゃんきゃん");
@@ -302,12 +288,35 @@ DROGON_TEST(SearchTest)
 	REQUIRE(confirmTagInfoJson != nullptr);
 	CHECK(confirmTagInfoJson->isArray());
 	CHECK(confirmTagInfoJson->size() == 0);
+	// クリーンアップ
+	CHECK(deleteVideo(videoId1) == true);
+	CHECK(deleteVideo(videoId2) == true);
+	CHECK(deleteVideo(videoId3) == true);
+	CHECK(deleteVideo(videoId4) == true);
+	CHECK(deleteVideo(videoId5) == true);
+	// タグのクリーンアップ
+	std::unordered_map<std::string, std::string> CleanupQueries = {
+	{"query", "%"},
+	};
+	auto allTagsResp = sendSyncRequest(drogon::Get, "/api/tag", Json::Value::null, CleanupQueries);
+	REQUIRE(allTagsResp != nullptr);
+	CHECK(allTagsResp->getStatusCode() == drogon::k200OK);
+	auto allTagsJson = allTagsResp->getJsonObject();
+	REQUIRE(allTagsJson != nullptr);
+	CHECK(allTagsJson->isArray());
+	for (size_t i = 0; i < allTagsJson->size(); ++i) {
+		int tagId = (*allTagsJson)[static_cast<int>(i)]["tag_id"].asInt();
+		Json::Value deleteTagBody;
+		deleteTagBody["tag_id"] = tagId;
+		auto deleteTagResp = sendSyncRequest(drogon::Delete, "/api/tag", deleteTagBody);
+		REQUIRE(deleteTagResp != nullptr);
+		CHECK(deleteTagResp->getStatusCode() == drogon::k200OK);
+	}
 }
 
 DROGON_TEST(WebhookTest)
 {
 	// WebhookのE2Eテスト
-	clearDatabase();
 	std::optional<std::string> videoIdOpt = postVideo("Webhookと再生のテスト");
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
@@ -336,11 +345,12 @@ DROGON_TEST(WebhookTest)
 	CHECK(responseM3u8.find("X-Amz-Credential=") != std::string::npos);
 	CHECK(responseM3u8.find("X-Amz-Expires=") != std::string::npos);
 	CHECK(responseM3u8.find("segment0.ts") != std::string::npos);
+	// クリーンアップ
+	CHECK(deleteVideo(videoId) == true);
 }
 
 DROGON_TEST(ProgressTest)
 {
-	clearDatabase();
 	std::string videoId = drogon::utils::genRandomString(11);
 	auto dbClient = drogon::app().getDbClient();
 	try {
@@ -379,11 +389,17 @@ DROGON_TEST(ProgressTest)
 	REQUIRE(getJson != nullptr);
 	CHECK((*getJson)["progress"].asInt() == 75);
 	CHECK((*getJson)["status"].asInt() == 1);
+	// クリーンアップ
+	try {
+		dbClient->execSqlSync("DELETE FROM videos WHERE video_id = ?", videoId);
+	}
+	catch (const drogon::orm::DrogonDbException& e) {
+		std::cerr << "DB Cleanup Error: " << e.base().what() << std::endl;
+	}
 }
 
 DROGON_TEST(CommentTest)
 {
-	clearDatabase();
 	std::optional<std::string> videoIdOpt = postVideo("コメントテスト");
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
@@ -437,11 +453,12 @@ DROGON_TEST(CommentTest)
 	CHECK((*getCommentsJson)[0]["comment"].asString() == "2つ目のコメント");
 	CHECK((*getCommentsJson)[0]["timestamp"].asDouble() == 20.05);
 	CHECK((*getCommentsJson)[0]["command"].asString() == "blue shita");
+	// クリーンアップ
+	CHECK(deleteVideo(videoId) == true);
 }
 
 DROGON_TEST(ViewCountIncTest)
 {
-	clearDatabase();
 	std::optional<std::string> videoIdOpt = postVideo("再生回数増加テスト");
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
@@ -467,11 +484,12 @@ DROGON_TEST(ViewCountIncTest)
 	auto redisVal2 = getRedisValueSync("pending_views:" + videoId);
 	REQUIRE(redisVal2.has_value());
 	CHECK(redisVal2.value() == "1");
+	// クリーンアップ
+	CHECK(deleteVideo(videoId) == true);
 }
 
 DROGON_TEST(ThumbnailTest)
 {
-	clearDatabase();
 	std::optional<std::string> videoIdOpt = postVideo("サムネイルテスト");
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
@@ -503,11 +521,12 @@ DROGON_TEST(ThumbnailTest)
 	CHECK(location.find("X-Amz-Signature=") != std::string::npos);
 	CHECK(location.find("X-Amz-Credential=") != std::string::npos);
 	CHECK(location.find("X-Amz-Expires=") != std::string::npos);
+	// クリーンアップ
+	CHECK(deleteVideo(videoIdOpt.value()) == true);
 }
 
 DROGON_TEST(TagTest)
 {
-	clearDatabase();
 	std::optional<std::string> videoIdOpt = postVideo("タグテスト");
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
@@ -602,11 +621,31 @@ DROGON_TEST(TagTest)
 	REQUIRE(searchJson != nullptr);
 	CHECK(searchJson->isArray());
 	CHECK(searchJson->size() == 0);
+	// クリーンアップ
+	CHECK(deleteVideo(videoId) == true);
+	CHECK(deleteVideo(videoId2) == true);
+	// タグのクリーンアップ
+	std::unordered_map<std::string, std::string> CleanupQueries = {
+	{"query", "%"},
+	};
+	auto allTagsResp = sendSyncRequest(drogon::Get, "/api/tag", Json::Value::null, CleanupQueries);
+	REQUIRE(allTagsResp != nullptr);
+	CHECK(allTagsResp->getStatusCode() == drogon::k200OK);
+	auto allTagsJson = allTagsResp->getJsonObject();
+	REQUIRE(allTagsJson != nullptr);
+	CHECK(allTagsJson->isArray());
+	for (size_t i = 0; i < allTagsJson->size(); ++i) {
+		int tagId = (*allTagsJson)[static_cast<int>(i)]["tag_id"].asInt();
+		Json::Value deleteTagBody;
+		deleteTagBody["tag_id"] = tagId;
+		auto deleteTagResp = sendSyncRequest(drogon::Delete, "/api/tag", deleteTagBody);
+		REQUIRE(deleteTagResp != nullptr);
+		CHECK(deleteTagResp->getStatusCode() == drogon::k200OK);
+	}
 }
 
 DROGON_TEST(AuthTest)
 {
-	clearDatabase();
 	// コメント削除権限の検証
 	std::optional<std::string> videoIdOpt = postVideo("認証テスト動画");
 	REQUIRE(videoIdOpt.has_value());
@@ -656,7 +695,6 @@ DROGON_TEST(AuthTest)
 
 DROGON_TEST(VttTest)
 {
-	clearDatabase();
 	std::optional<std::string> videoIdOpt = postVideo("VTTテスト");
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
@@ -670,11 +708,12 @@ DROGON_TEST(VttTest)
 	CHECK(resp->getStatusCode() == drogon::k200OK);
 	CHECK(resp->getHeader("Content-Type") == "text/vtt");
 	CHECK(std::string(resp->getBody()) == dummyVtt);
+	// クリーンアップ
+	CHECK(deleteVideo(videoId) == true);
 }
 
 DROGON_TEST(WebhookMinioTest)
 {
-	clearDatabase();
 	std::optional<std::string> videoIdOpt = postVideo("Webhook MinIOテスト", "MinIOにファイルがアップロードされるかのテスト", false);
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
@@ -719,11 +758,12 @@ DROGON_TEST(WebhookMinioTest)
 	auto poppedVideoId = redisFut.get();
 	REQUIRE(poppedVideoId.has_value());
 	CHECK(poppedVideoId.value() == videoId);
+	// クリーンアップ
+	CHECK(deleteVideo(videoId) == true);
 }
 
 DROGON_TEST(WebsocketTest)
 {
-	clearDatabase();
 	std::optional<std::string> videoIdOpt = postVideo("WebSocketテスト");
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
@@ -759,4 +799,6 @@ DROGON_TEST(WebsocketTest)
 
 	std::string receivedMsg = messageProm.get_future().get();
 	CHECK(receivedMsg == testMessage);
+	// クリーンアップ
+	CHECK(deleteVideo(videoId) == true);
 }
