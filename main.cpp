@@ -18,6 +18,8 @@ int main() {
     config.password = dbPass;
     config.connectionNumber = 3;
     config.name = "default";
+    config.characterSet = "utf8mb4";
+    config.timeout = 10000; // タイムアウトを10秒に設定
     drogon::app().addDbClient(config);
     drogon::app().loadConfigFile("../config.json");
 
@@ -26,7 +28,7 @@ int main() {
             auto client = drogon::app().getDbClient();
             auto redis = drogon::app().getRedisClient();
             try {
-                int cursor = 0;
+                long long cursor = 0;
                 do {
                     // 100件ずつ処理
                     auto scan_res = co_await redis->execCommandCoro(
