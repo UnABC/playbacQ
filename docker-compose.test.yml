@@ -30,8 +30,8 @@ services:
     # テストのビルドと実行を行うコマンド
     command: >
       bash -c "mkdir -p build/test && cd build/test && 
-      cmake -DBUILD_TESTING=ON .. && 
-      make -j$$(nproc) && 
+      cmake -DBUILD_TESTING=ON ../.. && 
+      cmake --build . -j$$(nproc) && 
       ctest --output-on-failure -VV"
 
   test-db:
