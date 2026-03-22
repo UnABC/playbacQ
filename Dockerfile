@@ -35,6 +35,8 @@ FROM unabc/playbacq-base:latest AS builder
 # Register system libraries in builder
 RUN ldconfig
 
+ARG BUILD_JOBS=1
+
 WORKDIR /app
 COPY CMakeLists.txt /app/
 COPY *.cpp /app/
@@ -46,7 +48,7 @@ COPY plugins/ /app/plugins/
 COPY worker/ /app/worker/
 COPY docker/ /app/docker/
 COPY config.json config.yaml /app/
-RUN mkdir build && cd build && cmake .. && make -j$(nproc)
+RUN mkdir build && cd build && cmake .. && make -j${BUILD_JOBS}
 
 FROM gcc:15.2
 ENV DEBIAN_FRONTEND=noninteractive

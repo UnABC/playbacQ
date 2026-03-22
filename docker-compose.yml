@@ -2,6 +2,8 @@ services:
   backend:
     build:
       context: .
+      args:
+        BUILD_JOBS: 6
       target: builder
     volumes:
       - .:/app
