@@ -74,6 +74,7 @@ WORKDIR /app
 # Copy both executables and make them available
 COPY --from=builder /app/build/playbacq /usr/local/bin/playbacq
 COPY --from=builder /app/build/playbacq_worker /usr/local/bin/playbacq_worker
+COPY --from=builder /app/config.json /app/config.yaml /usr/local/bin/
 RUN chmod +x /usr/local/bin/playbacq /usr/local/bin/playbacq_worker
 
 EXPOSE 8080
