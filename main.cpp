@@ -8,8 +8,10 @@ int main() {
     //Load config file
     const char* dbUserEnv = std::getenv("DB_USER");
     const char* dbPassEnv = std::getenv("DB_PASSWORD");
+    const char* frontendUrlEnv = std::getenv("FRONTEND_URL");
     std::string dbUser = dbUserEnv ? dbUserEnv : "DEFAULT_USER";
     std::string dbPass = dbPassEnv ? dbPassEnv : "DEFAULT_PASSWORD";
+    std::string frontendUrl = frontendUrlEnv ? frontendUrlEnv : "http://localhost:4200";
     drogon::orm::MysqlConfig config;
     config.host = "db";
     config.port = 3306;
@@ -78,7 +80,7 @@ int main() {
     // CORS: すべてのレスポンスにCORSヘッダを付与
     drogon::app().registerPostHandlingAdvice([]([[maybe_unused]] const drogon::HttpRequestPtr& req, const drogon::HttpResponsePtr& resp) {
         // フロントエンドのurlを許可
-        resp->addHeader("Access-Control-Allow-Origin", "http://localhost:4200");
+        resp->addHeader("Access-Control-Allow-Origin", frontendUrl);
         // 許可するHTTPメソッド
         resp->addHeader("Access-Control-Allow-Methods", "OPTIONS, GET, POST, PUT, DELETE");
         // 許可するHTTPヘッダ (フロントエンドからJWTなどを送る場合は Authorization も必要になるかも)
