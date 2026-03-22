@@ -19,7 +19,8 @@ int main() {
     config.connectionNumber = 3;
     config.name = "default";
     config.characterSet = "utf8mb4";
-    config.timeout = 10000; // タイムアウトを10秒に設定
+    config.isFast = false;
+    config.timeout = 15000; // タイムアウトを15秒に設定
     drogon::app().addDbClient(config);
     drogon::app().loadConfigFile("../config.json");
 

@@ -77,4 +77,3 @@ RUN chmod +x /usr/local/bin/playbacq /usr/local/bin/playbacq_worker
 EXPOSE 8080
 
 CMD ["/usr/local/bin/playbacq"]
-CMD ["/usr/local/bin/playbacq_worker"]
