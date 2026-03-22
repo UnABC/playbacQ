@@ -78,7 +78,7 @@ int main() {
         });
 
     // CORS: すべてのレスポンスにCORSヘッダを付与
-    drogon::app().registerPostHandlingAdvice([]([[maybe_unused]] const drogon::HttpRequestPtr& req, const drogon::HttpResponsePtr& resp) {
+    drogon::app().registerPostHandlingAdvice([&frontendUrl]([[maybe_unused]] const drogon::HttpRequestPtr& req, const drogon::HttpResponsePtr& resp) {
         // フロントエンドのurlを許可
         resp->addHeader("Access-Control-Allow-Origin", frontendUrl);
         // 許可するHTTPメソッド
