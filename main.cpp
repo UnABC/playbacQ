@@ -22,7 +22,7 @@ int main() {
     config.isFast = false;
     config.timeout = 15000; // タイムアウトを15秒に設定
     drogon::app().addDbClient(config);
-    drogon::app().loadConfigFile("../config.json");
+    drogon::app().loadConfigFile("config.json");
 
     drogon::app().getLoop()->runEvery(60.0, []() {
         drogon::async_run([]() -> drogon::Task<void> {
