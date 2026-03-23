@@ -6,15 +6,19 @@ int main() {
     //Set HTTP listener address and port
     drogon::app().addListener("0.0.0.0", 8080);
     //Load config file
-    const char* dbUserEnv = std::getenv("DB_USER");
-    const char* dbPassEnv = std::getenv("DB_PASSWORD");
+    const char* dbUserEnv = std::getenv("NS_MARIADB_USER");
+    const char* dbPassEnv = std::getenv("NS_MARIADB_PASSWORD");
+    const char* dbHostEnv = std::getenv("NS_MARIADB_HOSTNAME");
+    const char* dbPortEnv = std::getenv("NS_MARIADB_PORT");
     const char* frontendUrlEnv = std::getenv("FRONTEND_URL");
     std::string dbUser = dbUserEnv ? dbUserEnv : "DEFAULT_USER";
     std::string dbPass = dbPassEnv ? dbPassEnv : "DEFAULT_PASSWORD";
+    std::string dbHost = dbHostEnv ? dbHostEnv : "db";
+    std::string dbPort = dbPortEnv ? dbPortEnv : "3306";
     std::string frontendUrl = frontendUrlEnv ? frontendUrlEnv : "http://localhost:4200";
     drogon::orm::MysqlConfig config;
-    config.host = "db";
-    config.port = 3306;
+    config.host = dbHost;
+    config.port = std::stoi(dbPort);
     config.databaseName = "playbacq";
     config.username = dbUser;
     config.password = dbPass;
