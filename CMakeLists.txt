@@ -41,6 +41,7 @@ target_link_libraries(playbacq_worker PRIVATE
     Boost::filesystem
     hiredis
     redis++
+    hiredis_ssl
     ${AWSSDK_LINK_LIBRARIES}
     zstd
     CURL::libcurl
@@ -74,6 +75,7 @@ target_link_libraries(playbacq_core PUBLIC
     ${AWSSDK_LINK_LIBRARIES}
     zstd
     redis++
+    hiredis_ssl
 )
 
 drogon_create_views(playbacq_core ${CMAKE_CURRENT_SOURCE_DIR}/views

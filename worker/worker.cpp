@@ -137,6 +137,7 @@ int main() {
 			connection_options.port = std::stoi(redisPort);
 			connection_options.password = redisPass;
 			connection_options.user = redisUser;
+			connection_options.tls.enabled = true;
 
 			auto redis = sw::redis::Redis(connection_options);
 			std::cout << "Connected to Redis successfully." << std::endl;
