@@ -73,6 +73,7 @@ target_link_libraries(playbacq_core PUBLIC
     Drogon::Drogon
     ${AWSSDK_LINK_LIBRARIES}
     zstd
+    redis++
 )
 
 drogon_create_views(playbacq_core ${CMAKE_CURRENT_SOURCE_DIR}/views

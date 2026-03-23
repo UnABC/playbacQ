@@ -124,9 +124,19 @@ int main() {
 		std::cout << "Starting worker..." << std::endl;
 		try {
 			// ※ホスト名はdocker-composeのサービス名(redis)を指定
+			const char* envHost = std::getenv("REDIS_HOST");
+			const char* envPort = std::getenv("REDIS_PORT");
+			const char* envPass = std::getenv("REDIS_PASSWORD");
+			const char* envUser = std::getenv("REDIS_USER");
+			std::string redisHost = envHost ? envHost : "redis";
+			std::string redisPort = envPort ? envPort : "6379";
+			std::string redisPass = envPass ? envPass : "";
+			std::string redisUser = envUser ? envUser : "default";
 			sw::redis::ConnectionOptions connection_options;
-			connection_options.host = "redis";
-			connection_options.port = 6379;
+			connection_options.host = redisHost;
+			connection_options.port = std::stoi(redisPort);
+			connection_options.password = redisPass;
+			connection_options.user = redisUser;
 
 			auto redis = sw::redis::Redis(connection_options);
 			std::cout << "Connected to Redis successfully." << std::endl;

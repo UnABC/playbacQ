@@ -6,6 +6,7 @@ int main() {
     //Set HTTP listener address and port
     drogon::app().addListener("0.0.0.0", 8080);
     //Load config file
+    // DB情報を取得
     const char* dbUserEnv = std::getenv("NS_MARIADB_USER");
     const char* dbPassEnv = std::getenv("NS_MARIADB_PASSWORD");
     const char* dbHostEnv = std::getenv("NS_MARIADB_HOSTNAME");
@@ -16,6 +17,16 @@ int main() {
     std::string dbHost = dbHostEnv ? dbHostEnv : "db";
     std::string dbPort = dbPortEnv ? dbPortEnv : "3306";
     std::string frontendUrl = frontendUrlEnv ? frontendUrlEnv : "http://localhost:4200";
+    // Redis情報を取得
+    const char* redisHostEnv = std::getenv("REDIS_HOST");
+    const char* redisPortEnv = std::getenv("REDIS_PORT");
+    const char* redisPassEnv = std::getenv("REDIS_PASSWORD");
+    const char* redisUserEnv = std::getenv("REDIS_USER");
+    std::string redisHost = redisHostEnv ? redisHostEnv : "redis";
+    std::string redisPort = redisPortEnv ? redisPortEnv : "6379";
+    std::string redisPass = redisPassEnv ? redisPassEnv : "";
+    std::string redisUser = redisUserEnv ? redisUserEnv : "default";
+    // DBクライアントの設定
     drogon::orm::MysqlConfig config;
     config.host = dbHost;
     config.port = std::stoi(dbPort);
@@ -28,6 +39,20 @@ int main() {
     config.isFast = false;
     config.timeout = 15000; // タイムアウトを15秒に設定
     drogon::app().addDbClient(config);
+    // Redisクライアントの設定
+    try {
+        sw::redis::ConnectionOptions connection_options;
+        connection_options.host = redisHost;
+        connection_options.port = std::stoi(redisPort);
+        connection_options.password = redisPass;
+        connection_options.user = redisUser;
+        auto redis = sw::redis::Redis(connection_options);
+        std::cout << "Connected to Redis successfully." << std::endl;
+    }
+    catch (const sw::redis::Error& e) {
+        std::cerr << "Failed to connect to Redis: " << e.what() << std::endl;
+        return 1;
+    }
     drogon::app().loadConfigFile("config.json");
 
     drogon::app().getLoop()->runEvery(60.0, []() {

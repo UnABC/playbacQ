@@ -278,14 +278,6 @@
             "config": {}
         }
     ],
-    "redis_clients": [
-        {
-            "name": "default",
-            "host": "redis",
-            "port": 6379
-        }
-    ],
-    //custom_config: custom configuration for users. This object can be get by the app().getCustomConfig() method. 
     "custom_config": {
         "baseUrl": "https://playbacq.trap.show"
     }
