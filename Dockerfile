@@ -30,7 +30,7 @@
 # 	&& cmake .. -DBUILD_ONLY="s3" -DBUILD_SHARED_LIBS=OFF -DENABLE_TESTING=OFF -DCMAKE_BUILD_TYPE=Release \
 # 	&& make -j$(nproc) && make install
 
-FROM unabc/playbacq-base:latest AS builder
+FROM unabc/playbacq-base:v2 AS builder
 
 # Register system libraries in builder
 RUN ldconfig
