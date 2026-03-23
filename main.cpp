@@ -13,6 +13,7 @@ int main() {
     const char* dbHostEnv = std::getenv("NS_MARIADB_HOSTNAME");
     const char* dbPortEnv = std::getenv("NS_MARIADB_PORT");
     const char* frontendUrlEnv = std::getenv("FRONTEND_URL");
+    std::string dbName = dbNameEnv ? dbNameEnv : "playbacq";
     std::string dbUser = dbUserEnv ? dbUserEnv : "DEFAULT_USER";
     std::string dbPass = dbPassEnv ? dbPassEnv : "DEFAULT_PASSWORD";
     std::string dbHost = dbHostEnv ? dbHostEnv : "db";
@@ -31,7 +32,7 @@ int main() {
     drogon::orm::MysqlConfig config;
     config.host = dbHost;
     config.port = std::stoi(dbPort);
-    config.databaseName = "playbacq";
+    config.databaseName = dbName;
     config.username = dbUser;
     config.password = dbPass;
     config.connectionNumber = 3;
