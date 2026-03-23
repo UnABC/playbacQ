@@ -7,6 +7,7 @@ int main() {
     drogon::app().addListener("0.0.0.0", 8080);
     //Load config file
     // DB情報を取得
+    const char* dbNameEnv = std::getenv("NS_MARIADB_DATABASE");
     const char* dbUserEnv = std::getenv("NS_MARIADB_USER");
     const char* dbPassEnv = std::getenv("NS_MARIADB_PASSWORD");
     const char* dbHostEnv = std::getenv("NS_MARIADB_HOSTNAME");
