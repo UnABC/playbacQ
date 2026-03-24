@@ -42,20 +42,7 @@ int main() {
     config.timeout = 15000; // タイムアウトを15秒に設定
     drogon::app().addDbClient(config);
     // Redisクライアントの設定
-    try {
-        sw::redis::ConnectionOptions connection_options;
-        connection_options.host = redisHost;
-        connection_options.port = std::stoi(redisPort);
-        connection_options.password = redisPass;
-        connection_options.user = redisUser;
-        connection_options.tls.enabled = true;
-        auto redis = sw::redis::Redis(connection_options);
-        std::cout << "Connected to Redis successfully." << std::endl;
-    }
-    catch (const sw::redis::Error& e) {
-        std::cerr << "Failed to connect to Redis: " << e.what() << std::endl;
-        return 1;
-    }
+    drogon::app().createRedisClient(redisHost, std::stoi(redisPort), redisUser, redisPass);
     drogon::app().loadConfigFile("config.json");
 
     drogon::app().getLoop()->runEvery(60.0, []() {
