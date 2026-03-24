@@ -34,6 +34,7 @@ void AuthFilter::doFilter(const HttpRequestPtr& req,
     }
     res->addHeader("Access-Control-Allow-Methods", "OPTIONS, GET, POST, PUT, DELETE");
     res->addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    resp->addHeader("Access-Control-Allow-Credentials", "true");
 
     fcb(res);
 }
