@@ -107,7 +107,7 @@ int main() {
         });
 
     // CORS: Preflight (OPTIONS) リクエストの処理
-    drogon::app().registerPreRoutingAdvice([](const drogon::HttpRequestPtr& req, drogon::FilterCallback&& defer, drogon::FilterChainCallback&& chain) {
+    drogon::app().registerPreRoutingAdvice([&frontendUrl](const drogon::HttpRequestPtr& req, drogon::FilterCallback&& defer, drogon::FilterChainCallback&& chain) {
         if (req->method() == drogon::Options) {
             auto resp = drogon::HttpResponse::newHttpResponse();
             resp->setStatusCode(drogon::k200OK);
