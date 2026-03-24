@@ -111,6 +111,10 @@ int main() {
         if (req->method() == drogon::Options) {
             auto resp = drogon::HttpResponse::newHttpResponse();
             resp->setStatusCode(drogon::k200OK);
+            // フロントエンドのurlを許可
+            resp->addHeader("Access-Control-Allow-Origin", frontendUrl);
+            resp->addHeader("Access-Control-Allow-Methods", "OPTIONS, GET, POST, PUT, DELETE");
+            resp->addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
             defer(resp);
             return;
         }
