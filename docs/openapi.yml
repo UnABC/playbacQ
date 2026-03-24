@@ -17,6 +17,8 @@ paths:
       summary: "動画一覧の取得"
       operationId: getVideos
       x-tested: true
+      tags:
+        - Video
       parameters:
         - schema:
             type: "string"
@@ -56,6 +58,8 @@ paths:
       summary: "動画の投稿"
       operationId: createVideo
       x-tested: true
+      tags:
+        - Video
       requestBody:
         required: true
         content:
@@ -85,6 +89,8 @@ paths:
       description: "動画とそれに関連するデータ(コメント、タグなど)を削除します。タグそのものは消えません。動画の投稿者のみが削除できます。"
       operationId: deleteVideo
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: query
@@ -105,6 +111,8 @@ paths:
       summary: "動画の取得"
       operationId: getVideoById
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: path
@@ -128,6 +136,8 @@ paths:
       summary: "動画のコメントの取得"
       operationId: getCommentsByVideoId
       x-tested: true
+      tags:
+        - Comment
       parameters:
         - name: id
           in: path
@@ -150,6 +160,8 @@ paths:
       summary: "動画のコメントの投稿"
       operationId: createComment
       x-tested: true
+      tags:
+        - Comment
       parameters:
         - name: id
           in: path
@@ -186,6 +198,8 @@ paths:
       description: "動画のコメントを削除します。コメントしたユーザーまたは動画の投稿者のみが削除できます。"
       operationId: deleteComment
       x-tested: true
+      tags:
+        - Comment
       parameters:
         - name: id
           in: path
@@ -215,6 +229,8 @@ paths:
       summary: "動画のアップロードの進捗の取得"
       operationId: getVideoProgress
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: path
@@ -246,6 +262,8 @@ paths:
       summary: "署名付きurlを含む.m3u8ファイルの取得"
       operationId: getVideoPlayUrl
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: path
@@ -270,6 +288,8 @@ paths:
       summary: "動画の再生回数のインクリメント"
       operationId: incrementVideoViewCount
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: path
@@ -289,6 +309,8 @@ paths:
       summary: "動画のサムネ画像へのリダイレクト"
       operationId: getVideoThumbnail
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: path
@@ -309,6 +331,8 @@ paths:
       operationId: getVideoThumbnailUrl
       description: "サムネイル画像のURLを返すのではなく、直接サムネイル画像へリダイレクトします。これはWebTTファイル内でのみ使用します。"
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: path
@@ -334,6 +358,8 @@ paths:
       summary: "動画のサムネイルのWebVTTファイルの取得"
       operationId: getVideoThumbnailsVtt
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: path
@@ -358,6 +384,8 @@ paths:
       summary: "動画のタグの取得"
       operationId: getVideoTags
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: path
@@ -387,6 +415,8 @@ paths:
       summary: "動画のタグの追加"
       operationId: addVideoTag
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: path
@@ -425,6 +455,8 @@ paths:
       description: "動画からタグを削除します。タグそのものは消えません。"
       operationId: deleteVideoTag
       x-tested: true
+      tags:
+        - Video
       parameters:
         - name: id
           in: path
@@ -454,6 +486,8 @@ paths:
       summary: "タグの検索"
       operationId: searchTags
       x-tested: true
+      tags:
+        - Tag
       parameters:
         - name: query
           in: query
@@ -484,6 +518,8 @@ paths:
       description: "タグを完全に削除します。タグが付いている動画からもタグが消えます。"
       operationId: deleteTag
       x-tested: true
+      tags:
+        - Tag
       requestBody:
         required: true
         content:
@@ -501,11 +537,41 @@ paths:
           description: "アクセスが拒否されました。"
         "404":
           description: "タグが見つかりませんでした。"
+  /api/auth/login:
+    get:
+      summary: 部員認証（SSO）用リダイレクトエンドポイント
+      operationId: authLogin
+      x-tested: false
+      description: |
+        PaaS側の部員認証（リバースプロキシ認証）を確実に通過させるためのエンドポイント。
+        フロントエンドからこのURLへ画面自体を遷移させることで、PaaSのログインフローをトリガーします。
+        Drogon側での処理後、クエリパラメータ `redirect` で指定されたURLへ 302 Found で送り返します。
+      tags:
+        - Auth
+      parameters:
+        - name: redirect
+          in: query
+          description: 認証完了後に戻るフロントエンドの元のURL（URIエンコードされていること）
+          required: false
+          schema:
+            type: string
+            format: uri
+      responses:
+        "302":
+          description: 認証完了。指定されたURLへリダイレクトします。
+          headers:
+            Location:
+              description: リダイレクト先のURL
+              schema:
+                type: string
+                format: uri
   /webhooks/minio:
     post:
       summary: "動画アップロードの通知用"
       operationId: minioWebhook
       x-tested: true
+      tags:
+        - Webhook
       requestBody:
         required: true
         content:
@@ -516,6 +582,8 @@ paths:
     post:
       summary: "動画エンコードの完了通知用"
       operationId: encodeResultWebhook
+      tags:
+        - Webhook
       x-tested: true
       requestBody:
         required: true
@@ -545,6 +613,8 @@ paths:
         ※このエンドポイントはHTTP GETリクエストからWebSocket(ws:// または wss://)へアップグレードされます。
         コメントの投稿自体は `POST /api/videos/{id}/comments` を使用してください。
       x-tested: true
+      tags:
+        - Comment
       parameters:
         - name: video_id
           in: query
