@@ -1,6 +1,26 @@
 #include <drogon/drogon.h>
 #include <sw/redis++/redis++.h>
 #include <filesystem>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+
+std::string resolveHostname(const std::string& hostname) {
+    struct addrinfo hints {}, * res;
+    hints.ai_family = AF_INET; // IPv4
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (getaddrinfo(hostname.c_str(), nullptr, &hints, &res) != 0) {
+        return hostname; // 解決できない場合は元のホスト名を返す
+    }
+    char ipStr[INET_ADDRSTRLEN];
+    void* addr = &((struct sockaddr_in*)res->ai_addr)->sin_addr;
+    inet_ntop(AF_INET, addr, ipStr, sizeof(ipStr));
+    freeaddrinfo(res);
+
+    return std::string(ipStr);
+}
 
 int main() {
     //Set HTTP listener address and port
@@ -42,7 +62,8 @@ int main() {
     config.timeout = 15000; // タイムアウトを15秒に設定
     drogon::app().addDbClient(config);
     // Redisクライアントの設定
-    drogon::app().createRedisClient(redisHost, std::stoi(redisPort), redisUser, redisPass);
+    std::string redisIp = resolveHostname(redisHost);
+    drogon::app().createRedisClient(redisIp, std::stoi(redisPort), redisUser, redisPass);
     drogon::app().loadConfigFile("config.json");
 
     drogon::app().getLoop()->runEvery(60.0, []() {
