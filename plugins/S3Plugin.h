@@ -22,7 +22,7 @@ public:
   S3Plugin() {}
   void initAndStart(const Json::Value& config) override;
   void shutdown() override;
-  std::string genPresignedUrl(const std::string& videoId, const std::string bucket = "videofiles");
+  std::string genPresignedUrl(const std::string& objectKey, const std::string& contentType, const std::string bucket);
   std::string genPresignedGetUrl(const std::string& videoPath, const long long expirationSeconds = 900, const std::string bucket = "videos");
   std::string getObject(const std::string& key, const std::string bucket = "videos");
   void deleteFolder(const std::string& prefix, const std::string bucket = "videos");

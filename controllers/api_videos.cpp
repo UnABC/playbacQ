@@ -129,10 +129,19 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos(HttpRequestPtr req) {
 		newVideo.setUserId(req->getAttributes()->get<std::string>("userId"));
 		newVideo.setStatus((uint8_t)Status::pending);
 
+		// 動画ファイルのContent-Typeを検証
+		std::string contentType = jsonPtr->get("content_type", "").asString();
+		if (!contentType.starts_with("video/")) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+			resp->setBody("Only video files are allowed");
+			co_return resp;
+		}
+
 		// S3の事前署名URLを生成
 		auto s3Plugin = drogon::app().getPlugin<S3Plugin>();
-		std::string uploadUrl = s3Plugin->genPresignedUrl(videoId + ".mp4");
-		std::string thumbUploadUrl = s3Plugin->genPresignedUrl(videoId + ".jpg", "thumbnails");
+		std::string uploadUrl = s3Plugin->genPresignedUrl(videoId + ".mp4", contentType, "videofiles");
+		std::string thumbUploadUrl = s3Plugin->genPresignedUrl(videoId + ".jpg", "image/jpeg", "thumbnails");
 
 		// 動画URLを設定
 		auto customConfig = drogon::app().getCustomConfig();

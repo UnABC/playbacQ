@@ -84,10 +84,11 @@ void uploadDummyFileToMinIO(const std::string& key, const std::string& content) 
 	}
 }
 
-std::optional<std::string> postVideo(const std::string& title, const std::string& description = "This is a test video.", const bool sendWebhook = true) {
+std::optional<std::string> postVideo(const std::string& title, const std::string& description = "This is a test video.", const std::string& contentType = "video/mp4", const bool sendWebhook = true) {
 	Json::Value createBody;
 	createBody["title"] = title;
 	createBody["description"] = description;
+	createBody["content_type"] = contentType;
 	auto createResp = sendSyncRequest(drogon::Post, "/api/videos", createBody);
 	if (createResp == nullptr) {
 		std::cerr << "Failed to send POST request to create video" << std::endl;
@@ -145,6 +146,7 @@ bool deleteVideo(const std::string& videoId, const std::string& authUser = "test
 DROGON_TEST(ApiVideosTest)
 {
 	// POST,GET,DELETE api/videosのE2Eテスト
+	CHECK(postVideo("テスト", "test", "image/png") == std::nullopt);
 	std::optional<std::string> videoIdOpt = postVideo("テスト動画");
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
@@ -714,7 +716,7 @@ DROGON_TEST(VttTest)
 
 DROGON_TEST(WebhookMinioTest)
 {
-	std::optional<std::string> videoIdOpt = postVideo("Webhook MinIOテスト", "MinIOにファイルがアップロードされるかのテスト", false);
+	std::optional<std::string> videoIdOpt = postVideo("Webhook MinIOテスト", "MinIOにファイルがアップロードされるかのテスト", "video/mp4", false);
 	REQUIRE(videoIdOpt.has_value());
 	std::string videoId = videoIdOpt.value();
 	// MinIOにファイルがアップロードされたことを模倣したWebhookを送信

@@ -59,7 +59,7 @@ void S3Plugin::shutdown() {
     Aws::ShutdownAPI(options);
 }
 
-std::string S3Plugin::genPresignedUrl(const std::string& videoId, const std::string bucket) {
+std::string S3Plugin::genPresignedUrl(const std::string& objectKey, const std::string& contentType, const std::string bucket) {
     if (!s3Client) {
         throw std::runtime_error("S3 client is not initialized");
     }
@@ -67,11 +67,11 @@ std::string S3Plugin::genPresignedUrl(const std::string& videoId, const std::str
     const long long expirationSeconds = 900;
 
     Aws::Http::HeaderValueCollection customHeaders;
-    customHeaders.emplace("content-type", "video/mp4");
+    customHeaders.emplace("content-type", contentType);
 
     Aws::String presignedUrl = s3Client->GeneratePresignedUrl(
         bucket,
-        videoId,
+        objectKey,
         Aws::Http::HttpMethod::HTTP_PUT,
         customHeaders,
         expirationSeconds

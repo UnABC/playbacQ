@@ -73,6 +73,10 @@ paths:
                 description:
                   type: string
                   description: "動画の説明"
+                content_type:
+                  type: string
+                  description: "動画ファイルのContent-Type"
+                  example: "video/mp4"
       responses:
         "201":
           description: "動画が作成されました。"
