@@ -18,7 +18,7 @@ void S3Plugin::initAndStart([[maybe_unused]] const Json::Value& config) {
     Aws::Auth::AWSCredentials credentials(accessKey.c_str(), secretKey.c_str());
     Aws::Client::ClientConfiguration clientConfig;
     // ダミーリージョン
-    clientConfig.region = "us-east-1";
+    clientConfig.region = "auto";
     // 外部向けpresigned URL生成用エンドポイント(localhostだとIP v6の問題上バグるので127.0.0.1を使用)
     const char* envEndpoint = std::getenv("S3_ENDPOINT");
     clientConfig.endpointOverride = envEndpoint ? envEndpoint : "http://127.0.0.1:9000";
@@ -38,7 +38,7 @@ void S3Plugin::initAndStart([[maybe_unused]] const Json::Value& config) {
 #ifdef USE_INTERNAL_S3
     // 内部S3操作用クライアント（Docker内部ネットワーク経由）
     Aws::Client::ClientConfiguration internalConfig;
-    internalConfig.region = "us-east-1";
+    internalConfig.region = "auto";
     const char* envInternalEndpoint = std::getenv("MINIO_ENDPOINT");
     internalConfig.endpointOverride = envInternalEndpoint ? std::string("http://") + envInternalEndpoint : "http://minio:9000";
     internalConfig.scheme = Aws::Http::Scheme::HTTP;

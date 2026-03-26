@@ -50,7 +50,7 @@ drogon::HttpResponsePtr sendSyncRequest(
 
 void uploadDummyFileToMinIO(const std::string& key, const std::string& content) {
 	Aws::Client::ClientConfiguration clientConfig;
-	clientConfig.region = "us-east-1";
+	clientConfig.region = "auto";
 	const char* envEndpoint = std::getenv("MINIO_ENDPOINT");
 	clientConfig.endpointOverride = envEndpoint ? std::string("http://") + envEndpoint : "http://minio:9000";
 	clientConfig.scheme = Aws::Http::Scheme::HTTP;
