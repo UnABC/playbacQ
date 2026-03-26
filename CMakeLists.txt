@@ -35,6 +35,7 @@ list(REMOVE_ITEM SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
 # for FFmpeg worker
 add_executable(playbacq_worker worker/worker.cpp)
 set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost REQUIRED COMPONENTS system filesystem atomic)
 find_package(Boost REQUIRED COMPONENTS system filesystem)
 find_package(CURL REQUIRED)
 target_link_libraries(playbacq_worker PRIVATE
