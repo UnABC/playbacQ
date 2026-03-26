@@ -57,8 +57,6 @@ RUN apt-get update && apt-get install -y \
 	libcurl4 \
 	ffmpeg \
 	libhiredis1.1.0 \
-	libboost-system1.83.0 \
-	libboost-filesystem1.83.0 \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Copy all built libraries from builder
@@ -67,8 +65,6 @@ COPY --from=builder /usr/local/lib /usr/local/lib
 # Copy necessary system libraries from builder
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libjsoncpp.so* /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libbrotli*.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libboost_system.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libboost_filesystem.so* /usr/lib/x86_64-linux-gnu/
 
 # Register libraries in runtime cache
 RUN ldconfig
