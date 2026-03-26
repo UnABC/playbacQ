@@ -65,6 +65,8 @@ COPY --from=builder /usr/local/lib /usr/local/lib
 # Copy necessary system libraries from builder
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libjsoncpp.so* /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libbrotli*.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libboost_system.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libboost_filesystem.so* /usr/lib/x86_64-linux-gnu/
 
 # Register libraries in runtime cache
 RUN ldconfig
