@@ -52,6 +52,8 @@ RUN mkdir build && cd build && cmake .. && make -j${BUILD_JOBS}
 
 FROM gcc:15.2
 ENV DEBIAN_FRONTEND=noninteractive
+# キャッシュバストのためのダミー環境変数
+ENV FORCE_REBUILD_CACHE_BUST=1
 RUN apt-get update && apt-get install -y \
 	ca-certificates \
 	libcurl4 \
