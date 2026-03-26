@@ -66,6 +66,12 @@ int main() {
     drogon::app().createRedisClient(redisIp, std::stoi(redisPort), redisUser, redisPass);
     drogon::app().loadConfigFile("config.json");
 
+#ifdef USE_INTERNAL_S3
+    std::cout << "Using internal S3 endpoint: " << std::getenv("MINIO_ENDPOINT") << std::endl;
+#else
+    std::cout << "Using S3 endpoint: " << std::getenv("S3_ENDPOINT") << std::endl;
+#endif
+
     drogon::app().getLoop()->runEvery(60.0, []() {
         drogon::async_run([]() -> drogon::Task<void> {
             auto client = drogon::app().getDbClient();

@@ -14,8 +14,10 @@ private:
   Aws::SDKOptions options;
   // 外部向けpresigned URL生成用（127.0.0.1:9000）
   std::shared_ptr<Aws::S3::S3Client> s3Client;
+#ifdef USE_INTERNAL_S3
   // 内部S3操作用（minio:9000）
   std::shared_ptr<Aws::S3::S3Client> s3InternalClient;
+#endif
 public:
   S3Plugin() {}
   void initAndStart(const Json::Value& config) override;

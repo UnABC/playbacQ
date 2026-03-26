@@ -20,9 +20,13 @@ void S3Plugin::initAndStart([[maybe_unused]] const Json::Value& config) {
     // ダミーリージョン
     clientConfig.region = "us-east-1";
     // 外部向けpresigned URL生成用エンドポイント(localhostだとIP v6の問題上バグるので127.0.0.1を使用)
-    clientConfig.endpointOverride = "http://127.0.0.1:9000";
-    // HTTPを使用
+    const char* envEndpoint = std::getenv("S3_ENDPOINT");
+    clientConfig.endpointOverride = envEndpoint ? envEndpoint : "http://127.0.0.1:9000";
+#ifdef USE_INTERNAL_S3
     clientConfig.scheme = Aws::Http::Scheme::HTTP;
+#else
+    clientConfig.scheme = Aws::Http::Scheme::HTTPS;
+#endif
     s3Client = std::make_shared<Aws::S3::S3Client>(
         credentials,
         clientConfig,
@@ -30,11 +34,13 @@ void S3Plugin::initAndStart([[maybe_unused]] const Json::Value& config) {
         false
     );
 
+
+#ifdef USE_INTERNAL_S3
     // 内部S3操作用クライアント（Docker内部ネットワーク経由）
     Aws::Client::ClientConfiguration internalConfig;
     internalConfig.region = "us-east-1";
-    const char* envEndpoint = std::getenv("MINIO_ENDPOINT");
-    internalConfig.endpointOverride = envEndpoint ? std::string("http://") + envEndpoint : "http://minio:9000";
+    const char* envInternalEndpoint = std::getenv("MINIO_ENDPOINT");
+    internalConfig.endpointOverride = envInternalEndpoint ? std::string("http://") + envInternalEndpoint : "http://minio:9000";
     internalConfig.scheme = Aws::Http::Scheme::HTTP;
     s3InternalClient = std::make_shared<Aws::S3::S3Client>(
         credentials,
@@ -42,11 +48,14 @@ void S3Plugin::initAndStart([[maybe_unused]] const Json::Value& config) {
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::RequestDependent,
         false
     );
+#endif
 }
 
 void S3Plugin::shutdown() {
     s3Client.reset();
+#ifdef USE_INTERNAL_S3
     s3InternalClient.reset();
+#endif
     Aws::ShutdownAPI(options);
 }
 
@@ -87,15 +96,25 @@ std::string S3Plugin::genPresignedGetUrl(const std::string& videoPath, const lon
 
 // m3u8ファイル取得用
 std::string S3Plugin::getObject(const std::string& key, const std::string bucket) {
+#ifdef USE_INTERNAL_S3
     if (!s3InternalClient) {
         throw std::runtime_error("S3 internal client is not initialized");
     }
+#else
+    if (!s3Client) {
+        throw std::runtime_error("S3 client is not initialized");
+    }
+#endif
 
     Aws::S3::Model::GetObjectRequest request;
     request.SetBucket(bucket);
     request.SetKey(key);
 
+#ifdef USE_INTERNAL_S3
     auto outcome = s3InternalClient->GetObject(request);
+#else
+    auto outcome = s3Client->GetObject(request);
+#endif
     if (!outcome.IsSuccess()) {
         throw std::runtime_error("Failed to get object from S3: " + std::string(outcome.GetError().GetMessage().c_str()));
     }
@@ -106,9 +125,15 @@ std::string S3Plugin::getObject(const std::string& key, const std::string bucket
 }
 
 void S3Plugin::deleteFolder(const std::string& prefix, const std::string bucket) {
+#ifdef USE_INTERNAL_S3
     if (!s3InternalClient) {
         throw std::runtime_error("S3 internal client is not initialized");
     }
+#else
+    if (!s3Client) {
+        throw std::runtime_error("S3 client is not initialized");
+    }
+#endif
 
     Aws::S3::Model::ListObjectsV2Request listRequest;
     listRequest.SetBucket(bucket);
@@ -116,7 +141,11 @@ void S3Plugin::deleteFolder(const std::string& prefix, const std::string bucket)
 
     bool isTruncated = false;
     do {
+#ifdef USE_INTERNAL_S3
         auto listOutcome = s3InternalClient->ListObjectsV2(listRequest);
+#else
+        auto listOutcome = s3Client->ListObjectsV2(listRequest);
+#endif
         if (!listOutcome.IsSuccess()) {
             throw std::runtime_error("Failed to list objects for deletion: " + std::string(listOutcome.GetError().GetMessage().c_str()));
         }
@@ -135,7 +164,11 @@ void S3Plugin::deleteFolder(const std::string& prefix, const std::string bucket)
         deleteObjects.SetQuiet(true);
         deleteRequest.SetDelete(deleteObjects);
         // 一括削除の実行
+#ifdef USE_INTERNAL_S3
         auto deleteOutcome = s3InternalClient->DeleteObjects(deleteRequest);
+#else
+        auto deleteOutcome = s3Client->DeleteObjects(deleteRequest);
+#endif
         if (!deleteOutcome.IsSuccess()) {
             throw std::runtime_error("Failed to delete objects: " + std::string(deleteOutcome.GetError().GetMessage().c_str()));
         }

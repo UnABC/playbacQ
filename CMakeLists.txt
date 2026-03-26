@@ -103,3 +103,12 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     -Wall -Wextra -Wpedantic -O3
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE playbacq_core)
+
+option(BUILD_LOCAL_DEV "Build for local development with MinIO" OFF)
+if(BUILD_LOCAL_DEV)
+    target_compile_definitions(playbacq_core PRIVATE USE_INTERNAL_S3)
+    target_compile_definitions(playbacq_worker PRIVATE USE_INTERNAL_S3)
+    message(STATUS "Build Mode: LOCAL_DEV (MinIO enabled)")
+else()
+    message(STATUS "Build Mode: PRODUCTION (MinIO disabled)")
+endif()

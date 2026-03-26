@@ -16,13 +16,27 @@
 bool upload2MinIO(const std::string& local_file_path, const std::string& bucket_name, const std::string& object_key) {
 	const char* envUser = std::getenv("MINIO_ROOT_USER");
 	const char* envPassword = std::getenv("MINIO_ROOT_PASSWORD");
+#ifdef USE_INTERNAL_S3
+	const char* envEndpoint = std::getenv("MINIO_ENDPOINT");
+#else
+	const char* envEndpoint = std::getenv("S3_ENDPOINT");
+#endif
 	const std::string accessKey = envUser ? envUser : "";
 	const std::string secretKey = envPassword ? envPassword : "";
+#ifdef USE_INTERNAL_S3
+	const std::string minioEndpoint = envEndpoint ? "http://" + std::string(envEndpoint) : "http://minio:9000";
+#else
+	const std::string minioEndpoint = envEndpoint ? envEndpoint : "http://127.0.0.1:9000";
+#endif
 	Aws::Auth::AWSCredentials credentials(accessKey.c_str(), secretKey.c_str());
 	Aws::Client::ClientConfiguration clientConfig;
-	clientConfig.endpointOverride = "http://minio:9000";
+	clientConfig.endpointOverride = minioEndpoint;
 	clientConfig.region = "us-east-1";
+#ifdef USE_INTERNAL_S3
 	clientConfig.scheme = Aws::Http::Scheme::HTTP;
+#else
+	clientConfig.scheme = Aws::Http::Scheme::HTTPS;
+#endif
 	Aws::S3::S3Client s3_client(credentials, clientConfig, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
 
 	Aws::S3::Model::PutObjectRequest request;
@@ -54,7 +68,9 @@ void postEncodeResult(const std::string& videoId, const std::string& status, con
 		CURL* curl = curl_easy_init();
 		if (curl) {
 			struct curl_slist* headers = curl_slist_append(NULL, "Content-Type: application/json");
-			curl_easy_setopt(curl, CURLOPT_URL, "http://backend:8080/webhooks/encode_result");
+			const char* backendUrlEnv = std::getenv("BACKEND_URL");
+			std::string backendUrl = backendUrlEnv ? backendUrlEnv : "http://backend:8080";
+			curl_easy_setopt(curl, CURLOPT_URL, backendUrl + "/webhooks/encode_result");
 			curl_easy_setopt(curl, CURLOPT_POST, 1L);
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
@@ -86,13 +102,27 @@ void postEncodeResult(const std::string& videoId, const std::string& status, con
 bool deleteFromMinIO(const std::string& bucket_name, const std::string& object_key) {
 	const char* envUser = std::getenv("MINIO_ROOT_USER");
 	const char* envPassword = std::getenv("MINIO_ROOT_PASSWORD");
+#ifdef USE_INTERNAL_S3
+	const char* envEndpoint = std::getenv("MINIO_ENDPOINT");
+#else
+	const char* envEndpoint = std::getenv("S3_ENDPOINT");
+#endif
 	const std::string accessKey = envUser ? envUser : "";
 	const std::string secretKey = envPassword ? envPassword : "";
+#ifdef USE_INTERNAL_S3
+	const std::string minioEndpoint = envEndpoint ? "http://" + std::string(envEndpoint) : "http://minio:9000";
+#else
+	const std::string minioEndpoint = envEndpoint ? envEndpoint : "http://127.0.1:9000";
+#endif
 	Aws::Auth::AWSCredentials credentials(accessKey.c_str(), secretKey.c_str());
 	Aws::Client::ClientConfiguration clientConfig;
-	clientConfig.endpointOverride = "http://minio:9000";
+	clientConfig.endpointOverride = minioEndpoint;
 	clientConfig.region = "us-east-1";
+#ifdef USE_INTERNAL_S3
 	clientConfig.scheme = Aws::Http::Scheme::HTTP;
+#else
+	clientConfig.scheme = Aws::Http::Scheme::HTTPS;
+#endif
 	Aws::S3::S3Client s3_client(credentials, clientConfig, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
 
 	Aws::S3::Model::DeleteObjectRequest request;
@@ -143,6 +173,16 @@ int main() {
 			std::cout << "Connected to Redis successfully." << std::endl;
 			std::cout << "Waiting for jobs on 'encode_queue'..." << std::endl;
 
+#ifdef USE_INTERNAL_S3
+			const char* envEndpoint = std::getenv("MINIO_ENDPOINT");
+			std::string minioEndpoint = envEndpoint ? "http://" + std::string(envEndpoint) : "http://minio:9000";
+#else
+			const char* envEndpoint = std::getenv("S3_ENDPOINT");
+			std::string minioEndpoint = envEndpoint ? envEndpoint : "http://127.0.1:9000";
+#endif
+			std::cout << "Using MinIO endpoint: " << minioEndpoint << std::endl;
+
+
 			while (true) {
 				// 戻り値 = {queue名(encode_queue), videoId}
 				auto item = redis.blpop("encode_queue", 0);
@@ -150,7 +190,7 @@ int main() {
 				if (item) {
 					std::string video_id = item->second;
 					std::cout << "\n[JOB RECEIVED] Video ID: " << video_id << std::endl;
-					std::string video_url = "http://minio:9000/videofiles/" + video_id + ".mp4";
+					std::string video_url = minioEndpoint + "/videofiles/" + video_id + ".mp4";
 
 					// 動画の総時間をffprobeで取得
 					double total_duration_sec = 0.0;
@@ -197,7 +237,7 @@ int main() {
 
 						boost::process::ipstream output_stream;
 						std::vector<std::string> args = {
-							"-i", "http://minio:9000/videofiles/" + video_id + ".mp4",
+							"-i", minioEndpoint + "/videofiles/" + video_id + ".mp4",
 							"-progress", "pipe:1",
 							"-vf", "scale='trunc(min(1920,iw)/2)*2':'trunc(min(1080,ih)/2)*2':force_original_aspect_ratio=decrease,pad='ceil(max(iw,ih*(16/9))/2)*2':'ceil(max(ih,iw*(9/16))/2)*2':(ow-iw)/2:(oh-ih)/2:black",
 							"-c:v", "libx264",
@@ -248,7 +288,7 @@ int main() {
 						}
 						// シークバー用のサムネ生成
 						std::vector<std::string> thumb_args = {
-							"-i", "http://minio:9000/videofiles/" + video_id + ".mp4",
+							"-i", minioEndpoint + "/videofiles/" + video_id + ".mp4",
 							"-vf", std::format("fps=1/{},scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2:black,tile=10x10", interval),
 							"-q:v", "2",
 							base_dir + "thumbnail%03d.jpg"
@@ -268,7 +308,7 @@ int main() {
 						int thumb_time = std::min(4, static_cast<int>(total_duration_sec / 2));
 						std::vector<std::string> thumb_args2 = {
 							"-ss", std::to_string(thumb_time),
-							"-i", "http://minio:9000/videofiles/" + video_id + ".mp4",
+							"-i", minioEndpoint + "/videofiles/" + video_id + ".mp4",
 							"-vf", "thumbnail,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black",
 							"-frames:v", "1",
 							base_dir + "thumbnail.jpg"

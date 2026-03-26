@@ -9,6 +9,10 @@ int main(int argc, char** argv)
     std::promise<void> p1;
     std::future<void> f1 = p1.get_future();
 
+#ifndef USE_INTERNAL_S3
+    std::cerr << "WARNING: Using external S3 endpoint. Make sure the test MinIO server is running and accessible at " << std::getenv("S3_ENDPOINT") << std::endl;
+#endif
+
     // Start the main loop on another thread
     std::thread thr([&]() {
         // Queues the promise to be fulfilled after starting the loop
