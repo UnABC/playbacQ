@@ -130,11 +130,11 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos(HttpRequestPtr req) {
 		newVideo.setStatus((uint8_t)Status::pending);
 
 		// 動画ファイルのContent-Typeを検証
-		std::string contentType = jsonPtr->get("content_type", "").asString();
+		std::string contentType = jsonPtr->get("content_type", "NULL").asString();
 		if (!contentType.starts_with("video/")) {
 			auto resp = drogon::HttpResponse::newHttpResponse();
 			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
-			resp->setBody("Only video files are allowed");
+			resp->setBody("Only video files are allowed (uploaded type was: " + contentType + ")");
 			co_return resp;
 		}
 
