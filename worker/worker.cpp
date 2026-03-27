@@ -190,7 +190,30 @@ int main() {
 				if (item) {
 					std::string video_id = item->second;
 					std::cout << "\n[JOB RECEIVED] Video ID: " << video_id << std::endl;
-					std::string video_url = minioEndpoint + "/videofiles/" + video_id + ".mp4";
+					const char* envUser = std::getenv("MINIO_ROOT_USER");
+					const char* envPassword = std::getenv("MINIO_ROOT_PASSWORD");
+					std::string accessKey = envUser ? envUser : "";
+					std::string secretKey = envPassword ? envPassword : "";
+
+					Aws::Auth::AWSCredentials credentials(accessKey.c_str(), secretKey.c_str());
+					Aws::Client::ClientConfiguration clientConfig;
+					clientConfig.endpointOverride = minioEndpoint;
+					clientConfig.region = "us-east-1";
+#ifdef USE_INTERNAL_S3
+					clientConfig.scheme = Aws::Http::Scheme::HTTP;
+#else
+					clientConfig.scheme = Aws::Http::Scheme::HTTPS;
+#endif
+					Aws::S3::S3Client s3_client(credentials, clientConfig, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
+
+					// 有効期限1時間のダウンロード用URLを発行
+					Aws::String presignedUrl = s3_client.GeneratePresignedUrl(
+						"videofiles",
+						video_id + ".mp4",
+						Aws::Http::HttpMethod::HTTP_GET,
+						3600
+					);
+					std::string video_url = presignedUrl.c_str();
 
 					// 動画の総時間をffprobeで取得
 					double total_duration_sec = 0.0;
@@ -237,7 +260,7 @@ int main() {
 
 						boost::process::ipstream output_stream;
 						std::vector<std::string> args = {
-							"-i", minioEndpoint + "/videofiles/" + video_id + ".mp4",
+							"-i", video_url,
 							"-progress", "pipe:1",
 							"-vf", "scale='trunc(min(1920,iw)/2)*2':'trunc(min(1080,ih)/2)*2':force_original_aspect_ratio=decrease,pad='ceil(max(iw,ih*(16/9))/2)*2':'ceil(max(ih,iw*(9/16))/2)*2':(ow-iw)/2:(oh-ih)/2:black",
 							"-c:v", "libx264",
@@ -288,7 +311,7 @@ int main() {
 						}
 						// シークバー用のサムネ生成
 						std::vector<std::string> thumb_args = {
-							"-i", minioEndpoint + "/videofiles/" + video_id + ".mp4",
+							"-i", video_url,
 							"-vf", std::format("fps=1/{},scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2:black,tile=10x10", interval),
 							"-q:v", "2",
 							base_dir + "thumbnail%03d.jpg"
@@ -308,7 +331,7 @@ int main() {
 						int thumb_time = std::min(4, static_cast<int>(total_duration_sec / 2));
 						std::vector<std::string> thumb_args2 = {
 							"-ss", std::to_string(thumb_time),
-							"-i", minioEndpoint + "/videofiles/" + video_id + ".mp4",
+							"-i", video_url,
 							"-vf", "thumbnail,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black",
 							"-frames:v", "1",
 							base_dir + "thumbnail.jpg"
