@@ -6,7 +6,7 @@ ARG BUILD_JOBS=1
 WORKDIR /app
 COPY CMakeLists.txt /app/
 COPY *.cpp /app/
-RUN mkdir build && cd build && cmake .. && make -j${BUILD_JOBS}
+RUN mkdir build && cd build && cmake .. -DBUILD_WORKER=OFF && make -j${BUILD_JOBS}
 
 FROM gcc:15.2
 ENV DEBIAN_FRONTEND=noninteractive

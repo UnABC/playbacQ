@@ -23,33 +23,6 @@ else()
     set(CMAKE_CXX_STANDARD 14)
 endif()
 
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-find_package(Drogon CONFIG REQUIRED)
-find_package(AWSSDK REQUIRED COMPONENTS s3)
-
-file(GLOB SRC_DIR *.cpp)
-list(REMOVE_ITEM SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
-
-# for FFmpeg worker
-add_executable(playbacq_worker worker/worker.cpp)
-set(Boost_USE_STATIC_LIBS ON)
-find_package(Boost REQUIRED COMPONENTS system filesystem atomic)
-find_package(Boost REQUIRED COMPONENTS system filesystem)
-find_package(CURL REQUIRED)
-target_link_libraries(playbacq_worker PRIVATE
-    Boost::system
-    Boost::filesystem
-    hiredis
-    redis++
-    hiredis_ssl
-    ${AWSSDK_LINK_LIBRARIES}
-    zstd
-    CURL::libcurl
-)
-target_include_directories(playbacq_worker PRIVATE ${Boost_INCLUDE_DIRS})
-
 if(CMAKE_CXX_STANDARD LESS 17)
     message(FATAL_ERROR "c++17 or higher is required")
 elseif(CMAKE_CXX_STANDARD LESS 23)
@@ -58,59 +31,99 @@ else()
     message(STATUS "use c++23")
 endif()
 
-aux_source_directory(controllers CTL_SRC)
-aux_source_directory(filters FILTER_SRC)
-aux_source_directory(plugins PLUGIN_SRC)
-aux_source_directory(models MODEL_SRC)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# コアライブラリの作成
-add_library(playbacq_core OBJECT
-    ${SRC_DIR}
-    ${CTL_SRC}
-    ${FILTER_SRC}
-    ${PLUGIN_SRC}
-    ${MODEL_SRC}
-)
+find_package(Drogon CONFIG REQUIRED)
+find_package(AWSSDK REQUIRED COMPONENTS s3)
 
-target_link_libraries(playbacq_core PUBLIC
-    Drogon::Drogon
-    ${AWSSDK_LINK_LIBRARIES}
-    zstd
-    redis++
-    hiredis_ssl
-)
+option(BUILD_BACKEND "Build the backend executable" ON)
+option(BUILD_WORKER "Build the worker executable" ON)
+option(BUILD_LOCAL_DEV "Build for local development with MinIO" OFF)
 
-drogon_create_views(playbacq_core ${CMAKE_CURRENT_SOURCE_DIR}/views
-    ${CMAKE_CURRENT_BINARY_DIR})
+if(BUILD_WORKER)
+    # for FFmpeg worker
+    add_executable(playbacq_worker worker/worker.cpp)
+    set(Boost_USE_STATIC_LIBS ON)
+    find_package(Boost REQUIRED COMPONENTS system filesystem atomic)
+    find_package(Boost REQUIRED COMPONENTS system filesystem)
+    find_package(CURL REQUIRED)
+    target_link_libraries(playbacq_worker PRIVATE
+        Boost::system
+        Boost::filesystem
+        hiredis
+        redis++
+        hiredis_ssl
+        ${AWSSDK_LINK_LIBRARIES}
+        zstd
+        CURL::libcurl
+    )
+    target_include_directories(playbacq_worker PRIVATE ${Boost_INCLUDE_DIRS})
 
-target_include_directories(playbacq_core PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/models
-    ${CMAKE_CURRENT_SOURCE_DIR}/plugins
-)
+    if(BUILD_LOCAL_DEV)
+        target_compile_definitions(playbacq_worker PRIVATE USE_INTERNAL_S3)
+    endif()
+    message(STATUS "Configured to build: WORKER")
+endif()
 
-add_executable(${PROJECT_NAME} main.cpp)
+if(BUILD_BACKEND)
+    file(GLOB SRC_DIR *.cpp)
+    list(REMOVE_ITEM SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
+
+    aux_source_directory(controllers CTL_SRC)
+    aux_source_directory(filters FILTER_SRC)
+    aux_source_directory(plugins PLUGIN_SRC)
+    aux_source_directory(models MODEL_SRC)
+
+    # コアライブラリの作成
+    add_library(playbacq_core OBJECT
+        ${SRC_DIR}
+        ${CTL_SRC}
+        ${FILTER_SRC}
+        ${PLUGIN_SRC}
+        ${MODEL_SRC}
+    )
+
+    target_link_libraries(playbacq_core PUBLIC
+        Drogon::Drogon
+        ${AWSSDK_LINK_LIBRARIES}
+        zstd
+        redis++
+        hiredis_ssl
+    )
+
+    drogon_create_views(playbacq_core ${CMAKE_CURRENT_SOURCE_DIR}/views
+        ${CMAKE_CURRENT_BINARY_DIR})
+
+    target_include_directories(playbacq_core PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/models
+        ${CMAKE_CURRENT_SOURCE_DIR}/plugins
+    )
+
+    add_executable(${PROJECT_NAME} main.cpp)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        -Wall -Wextra -Wpedantic -O3
+    )
+    target_link_libraries(${PROJECT_NAME} PRIVATE playbacq_core)
+
+    if(BUILD_LOCAL_DEV)
+        target_compile_definitions(playbacq_core PUBLIC USE_INTERNAL_S3)
+        target_compile_definitions(${PROJECT_NAME} PRIVATE USE_INTERNAL_S3)
+    endif()
+    message(STATUS "Configured to build: BACKEND")
+endif()
+
 
 # Enable testing
 enable_testing()
 
 # Add tests if BUILD_TESTING is enabled
-if(BUILD_TESTING)
+if(BUILD_TESTING AND BUILD_BACKEND)
     add_subdirectory(test)
-else()
-    # Still need to add subdirectory for non-test builds
-    # but mark it optional
 endif()
-target_compile_options(${PROJECT_NAME} PRIVATE
-    -Wall -Wextra -Wpedantic -O3
-)
-target_link_libraries(${PROJECT_NAME} PRIVATE playbacq_core)
 
-option(BUILD_LOCAL_DEV "Build for local development with MinIO" OFF)
 if(BUILD_LOCAL_DEV)
-    target_compile_definitions(playbacq_core PUBLIC USE_INTERNAL_S3)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE USE_INTERNAL_S3)
-    target_compile_definitions(playbacq_worker PRIVATE USE_INTERNAL_S3)
     message(STATUS "Build Mode: LOCAL_DEV (MinIO enabled)")
 else()
     message(STATUS "Build Mode: PRODUCTION (MinIO disabled)")
