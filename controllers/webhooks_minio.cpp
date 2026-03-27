@@ -56,6 +56,7 @@ drogon::Task<drogon::HttpResponsePtr> minio::asyncHandleHttpRequest(HttpRequestP
                 // Redisにタスクを積む
                 auto redisClient = drogon::app().getRedisClient();
                 if (redisClient) {
+                    std::cout << "Pushing video ID " << videoId << " to Redis encode_queue" << std::endl;
                     co_await redisClient->execCommandCoro("LPUSH encode_queue %s", videoId.c_str());
                 } else {
                     std::cerr << "Failed to get Redis client" << std::endl;

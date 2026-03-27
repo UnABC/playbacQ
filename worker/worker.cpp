@@ -70,7 +70,9 @@ void postEncodeResult(const std::string& videoId, const std::string& status, con
 			struct curl_slist* headers = curl_slist_append(NULL, "Content-Type: application/json");
 			const char* backendUrlEnv = std::getenv("BACKEND_URL");
 			std::string backendUrl = backendUrlEnv ? backendUrlEnv : "http://backend:8080";
-			curl_easy_setopt(curl, CURLOPT_URL, backendUrl + "/webhooks/encode_result");
+			std::cout << "DEBUG: backendUrl is [" << backendUrl << "]" << std::endl;
+			std::string fullUrl = backendUrl + "/webhooks/encode_result";
+			curl_easy_setopt(curl, CURLOPT_URL, fullUrl.c_str());
 			curl_easy_setopt(curl, CURLOPT_POST, 1L);
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
@@ -171,7 +173,6 @@ int main() {
 
 			auto redis = sw::redis::Redis(connection_options);
 			std::cout << "Connected to Redis successfully." << std::endl;
-			std::cout << "Waiting for jobs on 'encode_queue'..." << std::endl;
 
 #ifdef USE_INTERNAL_S3
 			const char* envEndpoint = std::getenv("MINIO_ENDPOINT");
@@ -184,6 +185,7 @@ int main() {
 
 
 			while (true) {
+				std::cout << "Waiting for jobs on 'encode_queue'..." << std::endl;
 				// 戻り値 = {queue名(encode_queue), videoId}
 				auto item = redis.blpop("encode_queue", 0);
 
@@ -260,10 +262,18 @@ int main() {
 
 						boost::process::ipstream output_stream;
 						std::vector<std::string> args = {
+							// GPUエンコードの設定
+							"-hwaccel", "cuda",
+							// GPUエンコードの設定ここまで
 							"-i", video_url,
 							"-progress", "pipe:1",
+							// GPUエンコードに設定
+							//"-c:v", "libx264",
+							"-c:v", "h264_nvenc",
+							"-preset", "p4",
+							"-b:v", "2M",
+							// GPUエンコードの設定ここまで
 							"-vf", "scale='trunc(min(1920,iw)/2)*2':'trunc(min(1080,ih)/2)*2':force_original_aspect_ratio=decrease,pad='ceil(max(iw,ih*(16/9))/2)*2':'ceil(max(ih,iw*(9/16))/2)*2':(ow-iw)/2:(oh-ih)/2:black",
-							"-c:v", "libx264",
 							"-g", "60",
 							"-sc_threshold", "0",
 							"-f", "hls",
@@ -311,6 +321,9 @@ int main() {
 						}
 						// シークバー用のサムネ生成
 						std::vector<std::string> thumb_args = {
+							// GPUエンコードの設定
+							"-hwaccel", "cuda",
+							// GPUエンコードの設定ここまで
 							"-i", video_url,
 							"-vf", std::format("fps=1/{},scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2:black,tile=10x10", interval),
 							"-q:v", "2",
@@ -330,6 +343,9 @@ int main() {
 						//ホンモノのサムネ生成
 						int thumb_time = std::min(4, static_cast<int>(total_duration_sec / 2));
 						std::vector<std::string> thumb_args2 = {
+							// GPUエンコードの設定
+							"-hwaccel", "cuda",
+							// GPUエンコードの設定ここまで
 							"-ss", std::to_string(thumb_time),
 							"-i", video_url,
 							"-vf", "thumbnail,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black",
