@@ -76,17 +76,33 @@ void postEncodeResult(const std::string& videoId, const std::string& status, con
 			curl_easy_setopt(curl, CURLOPT_POST, 1L);
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
-			// サーバーからのレスポンスを標準出力に出さないためのミュート設定
+			std::string response_string;
+
+			// 取得したデータをstringに追記するコールバック関数
 			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, +[](void* ptr, size_t size, size_t nmemb, void* userdata) -> size_t {
-				return size * nmemb;
+				size_t total_size = size * nmemb;
+				auto* response = static_cast<std::string*>(userdata);
+				response->append(static_cast<char*>(ptr), total_size);
+				return total_size;
 				});
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
 
 			CURLcode res = curl_easy_perform(curl);
 
 			if (res != CURLE_OK) {
 				std::cerr << "Webhook failed: " << curl_easy_strerror(res) << std::endl;
 			} else {
-				std::cout << "Sent webhook to Drogon. Status: " << status << std::endl;
+				long http_code = 0;
+				curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+				if (http_code == 200) {
+					std::cout << "Sent webhook to Drogon. Status: " << status
+						<< " (Backend Response: " << response_string << ")" << std::endl;
+				} else {
+					std::cerr << "Webhook HTTP Error! HTTP Code: " << http_code
+						<< ", URL: " << fullUrl
+						<< ", Response: " << response_string << std::endl;
+				}
 			}
 
 			curl_slist_free_all(headers);
@@ -273,7 +289,7 @@ int main() {
 							"-preset", "p4",
 							"-b:v", "2M",
 							// GPUエンコードの設定ここまで
-							"-vf", "scale='trunc(min(1920,iw)/2)*2':'trunc(min(1080,ih)/2)*2':force_original_aspect_ratio=decrease,pad='ceil(max(iw,ih*(16/9))/2)*2':'ceil(max(ih,iw*(9/16))/2)*2':(ow-iw)/2:(oh-ih)/2:black",
+							"-vf", "scale='trunc(min(1920,iw)/2)*2':'trunc(min(1080,ih)/2)*2':force_original_aspect_ratio=decrease,pad='ceil(max(iw,ih*(16/9))/2)*2':'ceil(max(ih,iw*(9/16))/2)*2':(ow-iw)/2:(oh-ih)/2:black,format=yuv420p",
 							"-g", "60",
 							"-sc_threshold", "0",
 							"-f", "hls",

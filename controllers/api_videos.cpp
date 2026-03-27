@@ -87,6 +87,9 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideos(HttpRequestPtr req) {
 			// TODO : デフォルト値をいい感じにする
 			mapper.orderBy(drogon_model::playbacq::Videos::Cols::_created_at, drogon::orm::SortOrder::DESC);
 		}
+	} else {
+		// デフォルトは作成日時の降順
+		mapper.orderBy(drogon_model::playbacq::Videos::Cols::_created_at, drogon::orm::SortOrder::DESC);
 	}
 
 	// DB検索開始
