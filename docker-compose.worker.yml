@@ -1,0 +1,9 @@
+services:
+  prod-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: playbacq-prod-worker
+    restart: always
+    env_file:
+      - .env.prod
