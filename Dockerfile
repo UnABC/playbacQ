@@ -6,6 +6,12 @@ ARG BUILD_JOBS=1
 WORKDIR /app
 COPY CMakeLists.txt /app/
 COPY *.cpp /app/
+
+COPY models/ /app/models/
+COPY controllers/ /app/controllers/
+COPY filters/ /app/filters/
+COPY plugins/ /app/plugins/
+COPY config.json config.yaml /app/
 RUN mkdir build && cd build && cmake .. -DBUILD_WORKER=OFF && make -j${BUILD_JOBS}
 
 FROM gcc:15.2
