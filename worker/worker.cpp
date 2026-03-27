@@ -31,7 +31,7 @@ bool upload2MinIO(const std::string& local_file_path, const std::string& bucket_
 	Aws::Auth::AWSCredentials credentials(accessKey.c_str(), secretKey.c_str());
 	Aws::Client::ClientConfiguration clientConfig;
 	clientConfig.endpointOverride = minioEndpoint;
-	clientConfig.region = "auto";
+	clientConfig.region = "us-east-1";
 #ifdef USE_INTERNAL_S3
 	clientConfig.scheme = Aws::Http::Scheme::HTTP;
 #else
@@ -117,7 +117,7 @@ bool deleteFromMinIO(const std::string& bucket_name, const std::string& object_k
 	Aws::Auth::AWSCredentials credentials(accessKey.c_str(), secretKey.c_str());
 	Aws::Client::ClientConfiguration clientConfig;
 	clientConfig.endpointOverride = minioEndpoint;
-	clientConfig.region = "auto";
+	clientConfig.region = "us-east-1";
 #ifdef USE_INTERNAL_S3
 	clientConfig.scheme = Aws::Http::Scheme::HTTP;
 #else
