@@ -135,6 +135,45 @@ paths:
           description: "アクセスが拒否されました。"
         "404":
           description: "動画が見つかりませんでした。"
+    patch:
+      summary: "動画の更新"
+      operationId: updateVideo
+      x-tested: true
+      tags:
+        - Video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: "動画のタイトル"
+                description:
+                  type: string
+                  description: "動画の説明"
+      responses:
+        "200":
+          description: "動画が更新されました。"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+        "400":
+          description: "リクエストが不正です。"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "動画が見つかりませんでした。"
   /api/videos/{id}/comments:
     get:
       summary: "動画のコメントの取得"

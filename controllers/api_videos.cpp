@@ -149,7 +149,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::postVideos(HttpRequestPtr req) {
 		// 動画URLを設定
 		auto customConfig = drogon::app().getCustomConfig();
 		std::string baseUrl = customConfig["baseUrl"].asString();
-		newVideo.setVideoUrl(baseUrl + "/watch/" + videoId + ".mp4");
+		newVideo.setVideoUrl(baseUrl + "/watch/" + videoId);
 		newVideo.setThumbnailUrl("/api/videos/" + videoId + "/thumbnail");
 
 		drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
@@ -258,6 +258,45 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideo([[maybe_unused]] HttpRequ
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
 		resp->setBody("Failed to retrieve video: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::patchVideo([[maybe_unused]] HttpRequestPtr req, std::string id) {
+	auto jsonPtr = req->getJsonObject();
+	if (!jsonPtr) {
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+		resp->setBody("Invalid JSON format");
+		co_return resp;
+	}
+	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+	try {
+		auto video = co_await mapper.findByPrimaryKey(id);
+		if (*video.getUserId() != req->getAttributes()->get<std::string>("userId")) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k403Forbidden);
+			resp->setBody("You are not the owner of this video");
+			co_return resp;
+		}
+		video.updateByJson(*jsonPtr);
+		co_await mapper.update(video);
+
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(video.toJson());
+		resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+		co_return resp;
+	}
+	catch (const drogon::orm::UnexpectedRows& e) {
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+		resp->setBody("Video not found");
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "DB Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to update video: " + std::string(e.what()));
 		co_return resp;
 	}
 }

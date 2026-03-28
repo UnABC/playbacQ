@@ -165,6 +165,42 @@ DROGON_TEST(ApiVideosTest)
 	CHECK(confirmResp->getStatusCode() == drogon::k404NotFound);
 }
 
+DROGON_TEST(EditVideoTest)
+{
+	// 動画情報の編集テスト
+	std::optional<std::string> videoIdOpt = postVideo("編集前のタイトル", "編集前の説明");
+	REQUIRE(videoIdOpt.has_value());
+	std::string videoId = videoIdOpt.value();
+
+	Json::Value patchBody;
+	patchBody["title"] = "編集後のタイトル";
+	patchBody["description"] = "編集後の説明";
+	auto patchResp = sendSyncRequest(drogon::Patch, "/api/videos/" + videoId, patchBody);
+	REQUIRE(patchResp != nullptr);
+	CHECK(patchResp->getStatusCode() == drogon::k200OK);
+	auto patchJson = patchResp->getJsonObject();
+	int duration = patchJson->get("duration", -1).asInt();
+	std::string dateStr = (*patchJson)["created_at"].asString();
+
+	auto getResp = sendSyncRequest(drogon::Get, "/api/videos/" + videoId);
+	REQUIRE(getResp != nullptr);
+	CHECK(getResp->getStatusCode() == drogon::k200OK);
+	auto getJson = getResp->getJsonObject();
+	CHECK((*getJson)["title"].asString() == "編集後のタイトル");
+	CHECK((*getJson)["description"].asString() == "編集後の説明");
+	// 他のパラメータは変更されていないことも確認
+	CHECK((*getJson)["duration"].asInt() == duration);
+	CHECK((*getJson)["created_at"].asString() == dateStr);
+
+	// 他のユーザーで編集できないことも確認
+	patchResp = sendSyncRequest(drogon::Patch, "/api/videos/" + videoId, patchBody, {}, "otheruser");
+	REQUIRE(patchResp != nullptr);
+	CHECK(patchResp->getStatusCode() == drogon::k403Forbidden);
+
+	// クリーンアップ
+	CHECK(deleteVideo(videoId) == true);
+}
+
 DROGON_TEST(SearchTest)
 {
 	// 動画を投稿

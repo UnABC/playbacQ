@@ -17,6 +17,7 @@ namespace api
     ADD_METHOD_TO(videos::postVideos, "/api/videos", Post, "AuthFilter"); // path is /api/videos
     ADD_METHOD_TO(videos::deleteVideo, "/api/videos", Delete, "AuthFilter");
     ADD_METHOD_TO(videos::getVideo, "/api/videos/{1}", Get); // path is /api/videos/{id}
+    ADD_METHOD_TO(videos::patchVideo, "/api/videos/{1}", Patch, "AuthFilter");
     ADD_METHOD_TO(videos::getVideoProgress, "/api/videos/{1}/progress", Get);
     ADD_METHOD_TO(videos::getVideoPlayM3u8, "/api/videos/{1}/play", Get);
     ADD_METHOD_TO(videos::incrementVideoViews, "/api/videos/{1}/views", Post);
@@ -32,6 +33,7 @@ namespace api
     drogon::Task<drogon::HttpResponsePtr>  postVideos(HttpRequestPtr req);
     drogon::Task<drogon::HttpResponsePtr>  deleteVideo(HttpRequestPtr req);
     drogon::Task<drogon::HttpResponsePtr>  getVideo(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr>  patchVideo(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr>  getVideoProgress(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr>  getVideoPlayM3u8(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr>  incrementVideoViews(HttpRequestPtr req, std::string id);
