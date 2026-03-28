@@ -5,6 +5,7 @@ services:
       args:
         BUILD_JOBS: 6
       target: builder
+      dockerfile: Dockerfile.dev
     volumes:
       - .:/app
     command: sleep infinity
@@ -28,25 +29,13 @@ services:
     depends_on:
       - db
       - redis
-  worker:
-    build:
-      context: .
-      target: builder
-      dockerfile: Dockerfile.worker
-    volumes:
-      - .:/app
-    command: sleep infinity
-    environment:
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_USER=${REDIS_USER}
-      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
-      - S3_ENDPOINT=${S3_ENDPOINT}
-      - BACKEND_URL=${BACKEND_URL}
-    depends_on:
-      - redis
-      - minio
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, video]
   db:
     image: mysql:8.0
     environment:

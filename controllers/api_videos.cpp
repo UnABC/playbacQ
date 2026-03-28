@@ -216,9 +216,12 @@ drogon::Task<drogon::HttpResponsePtr> videos::deleteVideo(HttpRequestPtr req) {
 		}
 		// DBから動画情報を削除
 		co_await mapper.deleteByPrimaryKey(videoId);
-		auto resp = drogon::HttpResponse::newHttpResponse();
+
+		Json::Value jsonResponse;
+		jsonResponse["video_id"] = videoId;
+		jsonResponse["message"] = "Video deleted successfully";
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
 		resp->setStatusCode(drogon::HttpStatusCode::k200OK);
-		resp->setBody("Video deleted successfully");
 		co_return resp;
 	}
 	catch (const drogon::orm::UnexpectedRows& e) {

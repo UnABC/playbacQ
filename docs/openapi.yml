@@ -96,7 +96,7 @@ paths:
       tags:
         - Video
       parameters:
-        - name: id
+        - name: video_id
           in: query
           required: true
           schema:

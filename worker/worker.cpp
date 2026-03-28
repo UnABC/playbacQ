@@ -302,9 +302,13 @@ int main() {
 							base_dir + "output.m3u8",
 						};
 						std::cout << "Starting ffmpeg process for video ID: " << video_id << std::endl;
-						boost::process::child ffmpeg_process(ffmpeg_path, boost::process::args(args), boost::process::std_out > output_stream, boost::process::std_err > boost::process::null);
+						boost::process::child ffmpeg_process(ffmpeg_path,
+							boost::process::args(args),
+							boost::process::std_in.close(),
+							boost::process::std_out > output_stream,
+							boost::process::std_err.close());
 						std::string line;
-						while (ffmpeg_process.running() && std::getline(output_stream, line)) {
+						while (std::getline(output_stream, line)) {
 							std::cout << "[FFmpeg] " << line << std::endl;
 							if (line.starts_with("out_time_us=")) {
 								try {
@@ -345,7 +349,11 @@ int main() {
 							"-q:v", "2",
 							base_dir + "thumbnail%03d.jpg"
 						};
-						boost::process::child ffmpeg_thumb(ffmpeg_path, boost::process::args(thumb_args), boost::process::std_out > boost::process::null, boost::process::std_err > boost::process::null);
+						boost::process::child ffmpeg_thumb(ffmpeg_path,
+							boost::process::args(thumb_args),
+							boost::process::std_in.close(),
+							boost::process::std_out.close(),
+							boost::process::std_err.close());
 						ffmpeg_thumb.wait();
 						exit_code = ffmpeg_thumb.exit_code();
 						if (exit_code == 0) {
@@ -368,7 +376,11 @@ int main() {
 							"-frames:v", "1",
 							base_dir + "thumbnail.jpg"
 						};
-						boost::process::child ffmpeg_thumb2(ffmpeg_path, boost::process::args(thumb_args2), boost::process::std_out > boost::process::null, boost::process::std_err > boost::process::null);
+						boost::process::child ffmpeg_thumb2(ffmpeg_path,
+							boost::process::args(thumb_args2),
+							boost::process::std_in.close(),
+							boost::process::std_out.close(),
+							boost::process::std_err.close());
 						ffmpeg_thumb2.wait();
 						exit_code = ffmpeg_thumb2.exit_code();
 						if (exit_code == 0) {
