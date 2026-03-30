@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS videos (
 	view_count INT NOT NULL DEFAULT 0,
 	duration INT NOT NULL DEFAULT 0,
 	like_count INT NOT NULL DEFAULT 0,
+	comment_count INT NOT NULL DEFAULT 0,
 	status TINYINT UNSIGNED NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS comments (
@@ -44,4 +45,11 @@ CREATE TABLE IF NOT EXISTS video_tags (
 	PRIMARY KEY (video_id, tag_id),
 	FOREIGN KEY (video_id) REFERENCES videos(video_id) ON DELETE CASCADE,
 	FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS video_likes (
+	video_id VARCHAR(255),
+	user_id VARCHAR(32),
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (video_id, user_id),
+	FOREIGN KEY (video_id) REFERENCES videos(video_id) ON DELETE CASCADE
 );

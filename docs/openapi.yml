@@ -347,6 +347,94 @@ paths:
           description: "アクセスが拒否されました。"
         "404":
           description: "動画が見つかりませんでした。"
+  /api/videos/{id}/likes:
+    get:
+      summary: "動画をいいねしたユーザーID一覧の取得"
+      operationId: getVideoLikes
+      x-tested: true
+      tags:
+        - Video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      responses:
+        "200":
+          description: "動画をいいねしたユーザーID一覧を返します。"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  description: "ユーザーID"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "動画が見つかりませんでした。"
+    post:
+      summary: "動画のいいねの追加"
+      operationId: addVideoLike
+      x-tested: true
+      tags:
+        - Video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  description: "いいねをするユーザーのID"
+      responses:
+        "200":
+          description: "動画のいいねが追加されました。"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "動画が見つかりませんでした。"
+    delete:
+      summary: "動画のいいねの削除"
+      operationId: deleteVideoLike
+      x-tested: true
+      tags:
+        - Video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  description: "いいねを削除するユーザーのID"
+      responses:
+        "200":
+          description: "動画のいいねが削除されました。"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "動画が見つかりませんでした。"
   /api/videos/{id}/thumbnail:
     get:
       summary: "動画のサムネ画像へのリダイレクト"
@@ -595,7 +683,6 @@ paths:
         - name: redirect
           in: query
           description: 認証完了後に戻るフロントエンドの元のURL（URIエンコードされていること）
-          required: false
           schema:
             type: string
             format: uri
@@ -608,6 +695,26 @@ paths:
               schema:
                 type: string
                 format: uri
+  /api/auth/user:
+    get:
+      summary: "ログインしているユーザーIDの取得"
+      operationId: getCurrentUser
+      x-tested: false
+      tags:
+        - Auth
+      responses:
+        "200":
+          description: "ログインしているユーザーIDを返します。"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                    description: "ログインしているユーザーのID"
+        "401":
+          description: "認証されていません。"
   /webhooks/minio:
     post:
       summary: "動画アップロードの通知用"

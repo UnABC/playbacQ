@@ -16,6 +16,7 @@
 #include "../models/Comments.h"
 #include "../models/Tags.h"
 #include "../models/VideoTags.h"
+#include "../models/VideoLikes.h"
 #include "../plugins/S3Plugin.h"
 #include "Status.h"
 
@@ -492,6 +493,90 @@ drogon::Task<drogon::HttpResponsePtr> videos::incrementVideoViews([[maybe_unused
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
 		resp->setBody("Failed to increment view count: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::getLikes([[maybe_unused]] HttpRequestPtr req, std::string id) {
+	drogon::orm::CoroMapper<drogon_model::playbacq::VideoLikes> mapper(drogon::app().getDbClient());
+	try {
+		auto likesList = co_await mapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::VideoLikes::Cols::_video_id, drogon::orm::CompareOperator::EQ, id));
+		Json::Value jsonResponse(Json::arrayValue);
+		for (const auto& like : likesList) {
+			jsonResponse.append(*like.getUserId());
+		}
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "DB Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to retrieve likes: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::addLike(HttpRequestPtr req, std::string id) {
+	std::string userId = req->getAttributes()->get<std::string>("userId");
+	try {
+		drogon::orm::CoroMapper<drogon_model::playbacq::VideoLikes> mapper(drogon::app().getDbClient());
+		// すでにいいねしているか確認
+		auto existingLikes = co_await mapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::VideoLikes::Cols::_video_id, drogon::orm::CompareOperator::EQ, id) &&
+			drogon::orm::Criteria(drogon_model::playbacq::VideoLikes::Cols::_user_id, drogon::orm::CompareOperator::EQ, userId));
+		if (!existingLikes.empty()) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+			resp->setBody("You have already liked this video");
+			co_return resp;
+		}
+		drogon_model::playbacq::VideoLikes newLike;
+		newLike.setVideoId(id);
+		newLike.setUserId(userId);
+		newLike.setCreatedAt(trantor::Date::now());
+		co_await mapper.insert(newLike);
+
+		Json::Value jsonResponse;
+		jsonResponse["message"] = "Video liked successfully";
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
+		resp->setStatusCode(drogon::HttpStatusCode::k201Created);
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "DB Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to like video: " + std::string(e.what()));
+		co_return resp;
+	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::removeLike(HttpRequestPtr req, std::string id) {
+	std::string userId = req->getAttributes()->get<std::string>("userId");
+	try {
+		drogon::orm::CoroMapper<drogon_model::playbacq::VideoLikes> mapper(drogon::app().getDbClient());
+		auto existingLikes = co_await mapper.findBy(drogon::orm::Criteria(drogon_model::playbacq::VideoLikes::Cols::_video_id, drogon::orm::CompareOperator::EQ, id) &&
+			drogon::orm::Criteria(drogon_model::playbacq::VideoLikes::Cols::_user_id, drogon::orm::CompareOperator::EQ, userId));
+		if (existingLikes.empty()) {
+			auto resp = drogon::HttpResponse::newHttpResponse();
+			resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+			resp->setBody("You have not liked this video");
+			co_return resp;
+		}
+		co_await mapper.deleteBy(drogon::orm::Criteria(drogon_model::playbacq::VideoLikes::Cols::_video_id, drogon::orm::CompareOperator::EQ, id) &&
+			drogon::orm::Criteria(drogon_model::playbacq::VideoLikes::Cols::_user_id, drogon::orm::CompareOperator::EQ, userId));
+
+		Json::Value jsonResponse;
+		jsonResponse["message"] = "Like removed successfully";
+		auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
+		resp->setStatusCode(drogon::HttpStatusCode::k200OK);
+		co_return resp;
+	}
+	catch (const std::exception& e) {
+		std::cerr << "DB Error: " << e.what() << std::endl;
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+		resp->setBody("Failed to remove like: " + std::string(e.what()));
 		co_return resp;
 	}
 }

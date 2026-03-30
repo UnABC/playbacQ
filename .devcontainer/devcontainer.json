@@ -28,7 +28,8 @@
         "bierner.markdown-mermaid",
         "esbenp.prettier-vscode",
         "mosapride.zenkaku",
-        "KylinIdeTeam.cmake-intellisence"
+        "KylinIdeTeam.cmake-intellisence",
+        "inferrinizzard.prettier-sql-vscode"
       ]
     }
   }

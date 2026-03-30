@@ -840,3 +840,51 @@ DROGON_TEST(WebsocketTest)
 	// クリーンアップ
 	CHECK(deleteVideo(videoId) == true);
 }
+
+DROGON_TEST(LIKE_TEST)
+{
+	std::optional<std::string> videoIdOpt = postVideo("いいねテスト");
+	REQUIRE(videoIdOpt.has_value());
+	std::string videoId = videoIdOpt.value();
+
+	auto likeResp = sendSyncRequest(drogon::Post, "/api/videos/" + videoId + "/likes", Json::Value::null, {}, "testuser");
+	REQUIRE(likeResp != nullptr);
+	CHECK(likeResp->getStatusCode() == drogon::k201Created);
+	auto likeJson = likeResp->getJsonObject();
+	REQUIRE(likeJson != nullptr);
+	// 同じユーザーがもう一度いいねすると弾かれることを確認
+	likeResp = sendSyncRequest(drogon::Post, "/api/videos/" + videoId + "/likes", Json::Value::null, {}, "testuser");
+	REQUIRE(likeResp != nullptr);
+	CHECK(likeResp->getStatusCode() == drogon::k400BadRequest);
+	// 別のユーザーがいいねするとカウントが増えることを確認
+	likeResp = sendSyncRequest(drogon::Post, "/api/videos/" + videoId + "/likes", Json::Value::null, {}, "otheruser");
+	REQUIRE(likeResp != nullptr);
+	CHECK(likeResp->getStatusCode() == drogon::k201Created);
+	likeJson = likeResp->getJsonObject();
+	REQUIRE(likeJson != nullptr);
+	// いいねしたユーザー一覧を取得
+	auto getLikesResp = sendSyncRequest(drogon::Get, "/api/videos/" + videoId + "/likes");
+	REQUIRE(getLikesResp != nullptr);
+	CHECK(getLikesResp->getStatusCode() == drogon::k200OK);
+	auto getLikesJson = getLikesResp->getJsonObject();
+	REQUIRE(getLikesJson != nullptr);
+	CHECK(getLikesJson->isArray());
+	std::vector<std::string> expectedUsers = { "testuser", "otheruser" };
+	for (size_t i = 0; i < getLikesJson->size(); ++i) {
+		std::string username = ((*getLikesJson)[static_cast<int>(i)]).asString();
+		CHECK(std::ranges::contains(expectedUsers, username));
+	}
+	// いいねを取り消す
+	auto unlikeResp = sendSyncRequest(drogon::Delete, "/api/videos/" + videoId + "/likes", Json::Value::null, {}, "testuser");
+	REQUIRE(unlikeResp != nullptr);
+	CHECK(unlikeResp->getStatusCode() == drogon::k200OK);
+	auto unlikeJson = unlikeResp->getJsonObject();
+	REQUIRE(unlikeJson != nullptr);
+	// もう一度いいねを取り消すと弾かれることを確認
+	unlikeResp = sendSyncRequest(drogon::Delete, "/api/videos/" + videoId + "/likes", Json::Value::null, {}, "testuser");
+	REQUIRE(unlikeResp != nullptr);
+	CHECK(unlikeResp->getStatusCode() == drogon::k400BadRequest);
+
+	// クリーンアップ
+	CHECK(deleteVideo(videoId) == true);
+}

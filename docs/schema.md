@@ -13,6 +13,7 @@ erDiagram
 	int view_count
 	int duration
 	int like_count
+	int comment_count
 	TINYINT status
   }
   comments {
@@ -24,6 +25,12 @@ erDiagram
 	datetime created_at
 	text option
 	TINYINT status
+  }
+
+  video_likes {
+	varchar(255) video_id PK,FK
+	varchar(32) user_id PK,FK
+	datetime created_at
   }
   
   tags {
@@ -40,5 +47,6 @@ erDiagram
   videos||--o{comments : has
   videos||--o{video_tags : has
   tags||--o{video_tags : tagged_with
+  videos||--o{video_likes : has
 ```
 
