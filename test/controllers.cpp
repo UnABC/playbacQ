@@ -8,6 +8,8 @@
 #include <drogon/nosql/RedisClient.h>
 #include <drogon/WebSocketClient.h>
 #include <future>
+#include <thread>
+#include <chrono>
 #include <iostream>
 #include "../controllers/websocket_comments.h"
 
@@ -830,6 +832,8 @@ DROGON_TEST(WebsocketTest)
 				}
 		});
 	connectProm.get_future().get();
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 	std::string testMessage = "{\"user\":\"test_user\", \"comment\":\"テストコメント\"}";
 
