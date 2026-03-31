@@ -31,9 +31,10 @@ services:
     # テストのビルドと実行を行うコマンド
     command: >
       bash -c "mkdir -p build/test && cd build/test && 
-      cmake -DBUILD_TESTING=ON -DBUILD_LOCAL_DEV=ON ../.. && 
+      cmake -DENABLE_COVERAGE=ON -DBUILD_TESTING=ON -DBUILD_LOCAL_DEV=ON ../.. && 
       cmake --build . -j$$(nproc) && 
-      ctest --output-on-failure -VV"
+      ctest --output-on-failure -VV" &&
+      gcovr -r ../ . --xml-pretty -o coverage.xml
 
   test-db:
     image: mysql:8.0

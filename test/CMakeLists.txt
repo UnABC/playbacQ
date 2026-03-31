@@ -7,7 +7,7 @@ add_executable(${PROJECT_NAME} ${TEST_SRC})
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE 
+target_link_libraries(${PROJECT_NAME} PRIVATE
     Drogon::Drogon
     playbacq_core
 )
@@ -22,7 +22,7 @@ else()
     message(STATUS "Build Mode: PRODUCTION (MinIO disabled)")
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE 
+target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}
 )
 
@@ -33,3 +33,12 @@ add_test(
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/playbacq_test
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
+
+option(ENABLE_COVERAGE "Enable coverage reporting" OFF)
+
+if(ENABLE_COVERAGE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g --coverage")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} --coverage")
+    message(STATUS "Coverage is ENABLED")
+endif()
