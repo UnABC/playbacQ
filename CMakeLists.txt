@@ -41,6 +41,13 @@ option(BUILD_BACKEND "Build the backend executable" ON)
 option(BUILD_WORKER "Build the worker executable" ON)
 option(BUILD_LOCAL_DEV "Build for local development with MinIO" OFF)
 
+option(ENABLE_COVERAGE "Enable coverage reporting" OFF)
+if(ENABLE_COVERAGE)
+    add_compile_options(-O0 -g --coverage)
+    add_link_options(--coverage)
+    message(STATUS "Build Mode: COVERAGE (Instrumentation enabled)")
+endif()
+
 if(BUILD_WORKER)
     # for FFmpeg worker
     add_executable(playbacq_worker worker/worker.cpp)
