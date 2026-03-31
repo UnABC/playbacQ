@@ -33,7 +33,7 @@ services:
       bash -c "mkdir -p build/test && cd build/test && 
       cmake -DENABLE_COVERAGE=ON -DBUILD_TESTING=ON -DBUILD_LOCAL_DEV=ON ../.. && 
       cmake --build . -j$$(nproc) && 
-      ctest --output-on-failure -VV" &&
+      ctest --output-on-failure -VV &&
       gcovr -r /app . --xml-pretty -o /app/coverage.xml"
 
   test-db:
