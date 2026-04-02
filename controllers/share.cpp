@@ -4,6 +4,7 @@
 #include <drogon/orm/Criteria.h>
 #include <json/json.h>
 #include "../models/Videos.h"
+#include "../plugins/S3Plugin.h"
 
 drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std::string id) {
     const char* frontendUrl = std::getenv("FRONTEND_URL");
@@ -11,13 +12,14 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
 
     std::string userAgent = req->getHeader("user-agent");
     if (userAgent.find("traq-ogp-fetcher-curl-bot") != std::string::npos) {
-        std::string title;
+        std::string title, description;
         try {
             drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
             auto video = co_await mapper.findByPrimaryKey(id);
             title = *video.getTitle();
+            description = *video.getDescription();
             title = parseSafeUrl(title);
-            std::cout << "Parsed title: " << title << std::endl;
+            description = parseSafeUrl(description);
         }
         catch (const drogon::orm::UnexpectedRows& e) {
             // Not found 404
@@ -37,6 +39,7 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
 
         std::string embedUrl = baseUrl + "/embed/" + id;
         std::string pageUrl = baseUrl + "/watch/" + id;
+        std::string thumbnailUrl = baseUrl + "/share/" + id + "/thumbnail";
         std::string ogpHtml = std::format(R"(<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -45,6 +48,8 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
     <meta property="og:title" content="{0}" />
     <meta property="og:type" content="video.other" />
     <meta property="og:url" content="{2}" />
+    <meta property="og:image" content="{4}" />
+    <meta property="og:description" content="{3}" />
 
     <meta property="og:video" content="{1}" />
     <meta property="og:video:url" content="{1}" />
@@ -55,12 +60,14 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
 
     <meta name="twitter:card" content="player" />
     <meta name="twitter:title" content="{0}" />
+    <meta name="twitter:image" content="{4}" />
+    <meta name="twitter:description" content="{3}" />
     <meta name="twitter:player" content="{1}" />
     <meta name="twitter:player:width" content="1920" />
     <meta name="twitter:player:height" content="1080" />
 </head>
 <body></body>
-</html>)", title, embedUrl, pageUrl);
+</html>)", title, embedUrl, pageUrl, description, thumbnailUrl);
 
         auto resp = drogon::HttpResponse::newHttpResponse();
         resp->setStatusCode(drogon::HttpStatusCode::k200OK);
@@ -74,6 +81,34 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
     resp->setStatusCode(drogon::HttpStatusCode::k302Found);
     resp->addHeader("Location", baseUrl + "/watch/" + id);
     co_return resp;
+}
+
+drogon::Task<drogon::HttpResponsePtr> share::shareThumbnail(HttpRequestPtr req, std::string id) {
+    drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
+    try {
+        // 動画が存在するか確認
+        auto video = co_await mapper.findByPrimaryKey(id);
+
+        auto s3Plugin = drogon::app().getPlugin<S3Plugin>();
+        std::string presigned_url = s3Plugin->genPresignedGetUrl("hls/" + id + "/thumbnail.jpg", 604800);
+
+        auto resp = drogon::HttpResponse::newRedirectionResponse(presigned_url);
+        co_return resp;
+    }
+    catch (const drogon::orm::UnexpectedRows& e) {
+        // Not found 404
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::HttpStatusCode::k404NotFound);
+        resp->setBody("Video not found");
+        co_return resp;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Failed to fetch thumbnail from S3: " << e.what() << std::endl;
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+        resp->setBody("Failed to fetch thumbnail from S3: " + std::string(e.what()));
+        co_return resp;
+    }
 }
 
 std::string share::parseSafeUrl(const std::string& title) {

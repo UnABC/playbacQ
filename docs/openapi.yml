@@ -784,6 +784,24 @@ paths:
                 description: OGPメタタグを含むHTML
         "302":
           description: "動画ページへのリダイレクト"
+  /share/{id}/thumbnail:
+    get:
+      summary: "動画のサムネイルへのリダイレクト"
+      operationId: redirectShareThumbnail
+      description: "動画のサムネイルへのリダイレクト"
+      x-tested: false
+      tags:
+        - Video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      responses:
+        "302":
+          description: "動画のサムネイルへのリダイレクト"
 components:
   schemas:
     Video:
