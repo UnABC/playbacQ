@@ -10,10 +10,7 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
     std::string baseUrl = frontendUrl ? frontendUrl : "http://localhost:4200";
 
     std::string userAgent = req->getHeader("user-agent");
-    std::cout << "shareVideo: User-Agent: " << userAgent << std::endl;
-    // TODO: user-agentを調べる
-    if (userAgent.find("hogehoge") != std::string::npos) {
-        // videoIdを元に動画のタイトルを取得する
+    if (userAgent.find("traq-ogp-fetcher-curl-bot") != std::string::npos) {
         std::string title;
         try {
             drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());

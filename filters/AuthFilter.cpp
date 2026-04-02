@@ -13,8 +13,11 @@ void AuthFilter::doFilter(const HttpRequestPtr& req,
     FilterChainCallback&& fccb)
 {
     std::string userAgent = req->getHeader("user-agent");
-    std::cout << "AuthFilter: User-Agent: " << userAgent << std::endl;
-    if (userAgent.find("hogehoge") != std::string::npos) {
+    if (userAgent.find("traq-ogp-fetcher-curl-bot") != std::string::npos) {
+        fccb();
+        return;
+    }
+    if (req->path().find("/share/") != std::string::npos) {
         fccb();
         return;
     }
