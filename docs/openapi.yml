@@ -388,16 +388,6 @@ paths:
           schema:
             type: string
           description: "動画のID"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                user_id:
-                  type: string
-                  description: "いいねをするユーザーのID"
       responses:
         "200":
           description: "動画のいいねが追加されました。"
@@ -418,16 +408,6 @@ paths:
           schema:
             type: string
           description: "動画のID"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                user_id:
-                  type: string
-                  description: "いいねを削除するユーザーのID"
       responses:
         "200":
           description: "動画のいいねが削除されました。"
