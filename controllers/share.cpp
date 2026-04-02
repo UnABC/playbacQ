@@ -17,6 +17,7 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
             auto video = co_await mapper.findByPrimaryKey(id);
             title = *video.getTitle();
             title = parseSafeUrl(title);
+            std::cout << "Parsed title: " << title << std::endl;
         }
         catch (const drogon::orm::UnexpectedRows& e) {
             // Not found 404
@@ -51,13 +52,17 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
     <meta property="og:video:type" content="text/html" />
     <meta property="og:video:width" content="1920" />
     <meta property="og:video:height" content="1080" />
+
+    <meta name="twitter:card" content="player" />
+    <meta name="twitter:title" content="{0}" />
+    <meta name="twitter:player" content="{1}" />
+    <meta name="twitter:player:width" content="1920" />
+    <meta name="twitter:player:height" content="1080" />
 </head>
 <body></body>
 </html>)", title, embedUrl, pageUrl);
 
-        Json::Value jsonResponse;
-        jsonResponse["message"] = "Redirecting to video page";
-        auto resp = drogon::HttpResponse::newHttpJsonResponse(jsonResponse);
+        auto resp = drogon::HttpResponse::newHttpResponse();
         resp->setStatusCode(drogon::HttpStatusCode::k200OK);
         resp->setBody(ogpHtml);
         resp->setContentTypeCode(drogon::CT_TEXT_HTML);
