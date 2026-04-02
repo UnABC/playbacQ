@@ -11,4 +11,6 @@ public:
   ADD_METHOD_TO(share::shareVideo, "/share/{1}", Get, "AuthFilter");
   METHOD_LIST_END;
   drogon::Task<drogon::HttpResponsePtr> shareVideo(HttpRequestPtr req, std::string id);
+private:
+  std::string parseSafeUrl(const std::string& title);
 };

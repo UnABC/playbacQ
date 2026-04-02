@@ -16,6 +16,7 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
             drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
             auto video = co_await mapper.findByPrimaryKey(id);
             title = *video.getTitle();
+            title = parseSafeUrl(title);
         }
         catch (const drogon::orm::UnexpectedRows& e) {
             // Not found 404
@@ -34,12 +35,17 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
 
 
         std::string embedUrl = baseUrl + "/embed/" + id;
+        std::string pageUrl = baseUrl + "/watch/" + id;
         std::string ogpHtml = std::format(R"(<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="utf-8">
     <title>{0}</title>
     <meta property="og:title" content="{0}" />
+    <meta property="og:type" content="video.other" />
+    <meta property="og:url" content="{2}" />
+
+    <meta property="og:video" content="{1}" />
     <meta property="og:video:url" content="{1}" />
     <meta property="og:video:secure_url" content="{1}" />
     <meta property="og:video:type" content="text/html" />
@@ -47,7 +53,7 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
     <meta property="og:video:height" content="1080" />
 </head>
 <body></body>
-</html>)", title, embedUrl);
+</html>)", title, embedUrl, pageUrl);
 
         Json::Value jsonResponse;
         jsonResponse["message"] = "Redirecting to video page";
@@ -63,4 +69,26 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
     resp->setStatusCode(drogon::HttpStatusCode::k302Found);
     resp->addHeader("Location", baseUrl + "/watch/" + id);
     co_return resp;
+}
+
+std::string share::parseSafeUrl(const std::string& title) {
+    std::string safeTitle;
+    for (const char c : title) {
+        if (c == '\"') {
+            safeTitle += "&quot;";
+        } else if (c == '&') {
+            safeTitle += "&amp;";
+        } else if (c == '\'') {
+            safeTitle += "&apos;";
+        } else if (c == '<') {
+            safeTitle += "&lt;";
+        } else if (c == '>') {
+            safeTitle += "&gt;";
+        } else if (c == ' ') {
+            safeTitle += "&nbsp;";
+        } else {
+            safeTitle += c;
+        }
+    }
+    return safeTitle;
 }
