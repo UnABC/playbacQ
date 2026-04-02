@@ -757,7 +757,33 @@ paths:
           description: "Switching Protocols (WebSocket接続確立)"
         "400":
           description: "video_idが指定されていない等のエラー"
-
+  /share/{id}:
+    get:
+      summary: "動画ページへのリダイレクト"
+      operationId: redirectSharePage
+      description: |
+        ユーザーがアクセスした場合は動画ページへリダイレクト。
+        Botがアクセスした場合はOGP情報を返す（BotのUser-Agentを判定してリダイレクトかOGP情報の返却かを切り替える）。
+      x-tested: false
+      tags:
+        - Video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      responses:
+        "200":
+          description: "OGP情報を返します。"
+          content:
+            text/html:
+              schema:
+                type: string
+                description: OGPメタタグを含むHTML
+        "302":
+          description: "動画ページへのリダイレクト"
 components:
   schemas:
     Video:
