@@ -784,9 +784,9 @@ drogon::Task<drogon::HttpResponsePtr> videos::removeTag(HttpRequestPtr req, std:
 drogon::Task<drogon::HttpResponsePtr> videos::getM3u8(HttpRequestPtr req, std::string id) {
 	// 念のためこっちでも認証の確認
 	const char* EMBED_TOKEN_SECRET_KEY = std::getenv("EMBED_TOKEN_SECRET_KEY");
-	std::string SEACRET_KEY = EMBED_TOKEN_SECRET_KEY ? EMBED_TOKEN_SECRET_KEY : "default_secret_key";
+	std::string SECRET_KEY = EMBED_TOKEN_SECRET_KEY ? EMBED_TOKEN_SECRET_KEY : "default_secret_key";
 	auto token = req->getOptionalParameter<std::string>("token").value_or("");
-	if (!Token::validateToken(id, token, std::string(SEACRET_KEY))) {
+	if (!Token::validateToken(id, token, std::string(SECRET_KEY))) {
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k403Forbidden);
 		resp->setBody("Forbidden");

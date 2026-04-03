@@ -8,6 +8,17 @@
 #include "api_videos.h"
 #include "../plugins/Token.h"
 
+std::vector<std::string> getAllowedBotIps() {
+    std::vector<std::string> ips;
+    if (const char* envIps = std::getenv("TRUSTED_PROXIES")) {
+        auto view = std::string_view(envIps);
+        for (const auto& word : std::views::split(view, ',')) {
+            ips.emplace_back(word.begin(), word.end());
+        }
+    }
+    return ips;
+}
+
 drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std::string id) {
     const char* frontendUrl = std::getenv("FRONTEND_URL");
     std::string baseUrl = frontendUrl ? frontendUrl : "http://localhost:4200";
@@ -18,9 +29,15 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
     } else {
         clientIp = clientIp.substr(0, clientIp.find(','));
     }
-    std::cout << "[ShareController] Request from IP: " << clientIp << std::endl;
-    if (std::string userAgent = req->getHeader("user-agent");
-        userAgent.find("traq-ogp-fetcher-curl-bot") != std::string::npos) {
+    static const std::vector<std::string> trustedProxies = getAllowedBotIps();
+    bool isTrustedProxy = std::find(trustedProxies.begin(), trustedProxies.end(), clientIp) != trustedProxies.end();
+
+    std::string userAgent = req->getHeader("user-agent");
+    bool isOgpFetcher = userAgent.find("traq-ogp-fetcher-curl-bot") != std::string::npos;
+    if (isOgpFetcher && !isTrustedProxy) {
+        std::cout << "[[This IP is not trusted]]Blocked OGP fetcher with IP: " << clientIp << std::endl;
+    }
+    if (isOgpFetcher && isTrustedProxy) {
         std::string title, description;
         try {
             drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
