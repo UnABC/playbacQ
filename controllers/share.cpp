@@ -5,13 +5,22 @@
 #include <json/json.h>
 #include "../models/Videos.h"
 #include "../plugins/S3Plugin.h"
+#include "api_videos.h"
+#include "../plugins/Token.h"
 
 drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std::string id) {
     const char* frontendUrl = std::getenv("FRONTEND_URL");
     std::string baseUrl = frontendUrl ? frontendUrl : "http://localhost:4200";
 
-    std::string userAgent = req->getHeader("user-agent");
-    if (userAgent.find("traq-ogp-fetcher-curl-bot") != std::string::npos) {
+    std::string clientIp = req->getHeader("x-forwarded-for");
+    if (clientIp.empty()) {
+        clientIp = req->getPeerAddr().toIp();
+    } else {
+        clientIp = clientIp.substr(0, clientIp.find(','));
+    }
+    std::cout << "[ShareController] Request from IP: " << clientIp << std::endl;
+    if (std::string userAgent = req->getHeader("user-agent");
+        userAgent.find("traq-ogp-fetcher-curl-bot") != std::string::npos) {
         std::string title, description;
         try {
             drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
@@ -35,9 +44,10 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
             resp->setBody("Failed to retrieve video: " + std::string(e.what()));
             co_return resp;
         }
-
-
-        std::string embedUrl = baseUrl + "/embed/" + id;
+        const char* EMBED_TOKEN_SECRET_KEY = std::getenv("EMBED_TOKEN_SECRET_KEY");
+        std::string SEACRET_KEY = EMBED_TOKEN_SECRET_KEY ? EMBED_TOKEN_SECRET_KEY : "default_secret_key";
+        std::string Token = Token::generateEmbedToken(id, SEACRET_KEY);
+        std::string embedUrl = baseUrl + "/embed/" + id + "?token=" + Token;
         std::string pageUrl = baseUrl + "/watch/" + id;
         std::string thumbnailUrl = baseUrl + "/share/" + id + "/thumbnail";
         std::string ogpHtml = std::format(R"(<!DOCTYPE html>

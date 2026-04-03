@@ -18,6 +18,7 @@
 #include "../models/VideoTags.h"
 #include "../models/VideoLikes.h"
 #include "../plugins/S3Plugin.h"
+#include "../plugins/Token.h"
 #include "Status.h"
 
 using namespace api;
@@ -582,7 +583,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::removeLike(HttpRequestPtr req, std
 }
 
 drogon::Task<drogon::HttpResponsePtr> videos::getVideoTopThumbnail([[maybe_unused]] HttpRequestPtr req, std::string id) {
-	return getVideoThumbnails(req, id, "thumbnail.jpg");
+	co_return co_await getVideoThumbnails(req, id, "thumbnail.jpg");
 }
 
 drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnails([[maybe_unused]] HttpRequestPtr req, std::string id, std::string filename) {
@@ -778,4 +779,18 @@ drogon::Task<drogon::HttpResponsePtr> videos::removeTag(HttpRequestPtr req, std:
 		resp->setBody("Failed to remove tag: " + std::string(e.what()));
 		co_return resp;
 	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::getM3u8(HttpRequestPtr req, std::string id) {
+	// 念のためこっちでも認証の確認
+	const char* EMBED_TOKEN_SECRET_KEY = std::getenv("EMBED_TOKEN_SECRET_KEY");
+	std::string SEACRET_KEY = EMBED_TOKEN_SECRET_KEY ? EMBED_TOKEN_SECRET_KEY : "default_secret_key";
+	auto token = req->getOptionalParameter<std::string>("token").value_or("");
+	if (!Token::validateToken(id, token, std::string(SEACRET_KEY))) {
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k403Forbidden);
+		resp->setBody("Forbidden");
+		co_return resp;
+	}
+	co_return co_await getVideoPlayM3u8(req, id);
 }

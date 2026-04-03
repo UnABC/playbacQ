@@ -34,28 +34,32 @@ namespace api
     ADD_METHOD_TO(videos::getTags, "/api/videos/{1}/tags", Get);
     ADD_METHOD_TO(videos::addTag, "/api/videos/{1}/tags", Post);
     ADD_METHOD_TO(videos::removeTag, "/api/videos/{1}/tags", Delete);
+
+    ADD_METHOD_TO(videos::getM3u8, "/embed/{1}", Get);
     METHOD_LIST_END;
-    drogon::Task<drogon::HttpResponsePtr>  getVideos(HttpRequestPtr req);
-    drogon::Task<drogon::HttpResponsePtr>  postVideos(HttpRequestPtr req);
-    drogon::Task<drogon::HttpResponsePtr>  deleteVideo(HttpRequestPtr req);
+    drogon::Task<drogon::HttpResponsePtr> getVideos(HttpRequestPtr req);
+    drogon::Task<drogon::HttpResponsePtr> postVideos(HttpRequestPtr req);
+    drogon::Task<drogon::HttpResponsePtr> deleteVideo(HttpRequestPtr req);
 
-    drogon::Task<drogon::HttpResponsePtr>  getVideo(HttpRequestPtr req, std::string id);
-    drogon::Task<drogon::HttpResponsePtr>  patchVideo(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> getVideo(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> patchVideo(HttpRequestPtr req, std::string id);
 
-    drogon::Task<drogon::HttpResponsePtr>  getVideoProgress(HttpRequestPtr req, std::string id);
-    drogon::Task<drogon::HttpResponsePtr>  getVideoPlayM3u8(HttpRequestPtr req, std::string id);
-    drogon::Task<drogon::HttpResponsePtr>  incrementVideoViews(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> getVideoProgress(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> getVideoPlayM3u8(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> incrementVideoViews(HttpRequestPtr req, std::string id);
 
-    drogon::Task<drogon::HttpResponsePtr>  getLikes(HttpRequestPtr req, std::string id);
-    drogon::Task<drogon::HttpResponsePtr>  addLike(HttpRequestPtr req, std::string id);
-    drogon::Task<drogon::HttpResponsePtr>  removeLike(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> getLikes(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> addLike(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> removeLike(HttpRequestPtr req, std::string id);
 
-    drogon::Task<drogon::HttpResponsePtr>  getVideoTopThumbnail(HttpRequestPtr req, std::string id);
-    drogon::Task<drogon::HttpResponsePtr>  getVideoThumbnails(HttpRequestPtr req, std::string id, std::string filename);
-    drogon::Task<drogon::HttpResponsePtr>  getVideoThumbnailVtt(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> getVideoTopThumbnail(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> getVideoThumbnails(HttpRequestPtr req, std::string id, std::string filename);
+    drogon::Task<drogon::HttpResponsePtr> getVideoThumbnailVtt(HttpRequestPtr req, std::string id);
 
-    drogon::Task<drogon::HttpResponsePtr>  getTags(HttpRequestPtr req, std::string id);
-    drogon::Task<drogon::HttpResponsePtr>  addTag(HttpRequestPtr req, std::string id);
-    drogon::Task<drogon::HttpResponsePtr>  removeTag(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> getTags(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> addTag(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> removeTag(HttpRequestPtr req, std::string id);
+
+    drogon::Task<drogon::HttpResponsePtr> getM3u8(HttpRequestPtr req, std::string id);
   };
 }

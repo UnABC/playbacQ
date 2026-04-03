@@ -802,6 +802,67 @@ paths:
       responses:
         "302":
           description: "動画のサムネイルへのリダイレクト"
+  /embed/{id}:
+    get:
+      summary: "署名付きurlを含む.m3u8ファイルの取得（埋め込み用）"
+      operationId: getEmbedVideoPlayUrl
+      x-tested: false
+      tags:
+        - Video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "埋め込みURLのトークン"
+      responses:
+        "200":
+          description: "署名付きurlを含む.m3u8ファイルを返します。"
+          content:
+            application/vnd.apple.mpegurl:
+              schema:
+                type: string
+                description: "署名付きurlを含む.m3u8ファイルの内容"
+        "403":
+          description: "アクセスが拒否されました。無効なトークンの可能性があります。"
+        "404":
+          description: "動画が見つかりませんでした。"
+  /embed/{id}/comments:
+    get:
+      summary: "動画のコメントの取得（埋め込み用）"
+      operationId: getEmbedComments
+      x-tested: false
+      tags:
+        - Comment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+      responses:
+        "200":
+          description: "動画のコメントを返します。"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Comment"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "動画が見つかりませんでした。"
 components:
   schemas:
     Video:
