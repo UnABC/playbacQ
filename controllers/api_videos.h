@@ -35,7 +35,7 @@ namespace api
     ADD_METHOD_TO(videos::addTag, "/api/videos/{1}/tags", Post);
     ADD_METHOD_TO(videos::removeTag, "/api/videos/{1}/tags", Delete);
 
-    ADD_METHOD_TO(videos::getM3u8, "/embed/{1}", Get);
+    ADD_METHOD_TO(videos::getM3u8, "/api/embed/{1}", Get);
     METHOD_LIST_END;
     drogon::Task<drogon::HttpResponsePtr> getVideos(HttpRequestPtr req);
     drogon::Task<drogon::HttpResponsePtr> postVideos(HttpRequestPtr req);

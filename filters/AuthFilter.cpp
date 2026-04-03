@@ -13,7 +13,7 @@ void AuthFilter::doFilter(const HttpRequestPtr& req,
     FilterCallback&& fcb,
     FilterChainCallback&& fccb)
 {
-    if (req->path().starts_with("/embed/")) {
+    if (req->path().starts_with("/api/embed/")) {
         auto token = req->getOptionalParameter<std::string>("token").value_or("");
         const char* EMBED_TOKEN_SECRET_KEY = std::getenv("EMBED_TOKEN_SECRET_KEY");
         std::string SEACRET_KEY = EMBED_TOKEN_SECRET_KEY ? EMBED_TOKEN_SECRET_KEY : "default_secret_key";
