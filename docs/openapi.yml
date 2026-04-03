@@ -802,7 +802,7 @@ paths:
       responses:
         "302":
           description: "動画のサムネイルへのリダイレクト"
-  /api/embed/{id}:
+  /unauthApi/embed/{id}:
     get:
       summary: "署名付きurlを含む.m3u8ファイルの取得（埋め込み用）"
       operationId: getEmbedVideoPlayUrl
@@ -834,7 +834,7 @@ paths:
           description: "アクセスが拒否されました。無効なトークンの可能性があります。"
         "404":
           description: "動画が見つかりませんでした。"
-  /api/embed/{id}/comments:
+  /unauthApi/embed/{id}/comments:
     get:
       summary: "動画のコメントの取得（埋め込み用）"
       operationId: getEmbedComments

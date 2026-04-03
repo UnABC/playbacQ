@@ -15,7 +15,7 @@ namespace api
     ADD_METHOD_TO(comments::postComment, "/api/videos/{1}/comments", Post, "AuthFilter");
     ADD_METHOD_TO(comments::deleteComment, "/api/videos/{1}/comments", Delete, "AuthFilter");
 
-    ADD_METHOD_TO(comments::getEmbedComments, "/api/embed/{1}/comments", Get);
+    ADD_METHOD_TO(comments::getEmbedComments, "/unauthApi/embed/{1}/comments", Get);
     METHOD_LIST_END;
 
     drogon::Task<drogon::HttpResponsePtr>  getComments(HttpRequestPtr req, std::string videoId);
