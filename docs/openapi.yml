@@ -834,6 +834,38 @@ paths:
           description: "アクセスが拒否されました。無効なトークンの可能性があります。"
         "404":
           description: "動画が見つかりませんでした。"
+  /unauthApi/embed/{id}/vtt:
+    get:
+      summary: "動画のサムネイルのWebVTTファイルの取得（埋め込み用）"
+      operationId: getEmbedVideoThumbnailsVtt
+      x-tested: false
+      tags:
+        - Video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "動画のID"
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "埋め込みURLのトークン"
+      responses:
+        "200":
+          description: "動画のサムネイルのWebVTTファイルを返します。"
+          content:
+            text/vtt:
+              schema:
+                type: string
+                description: "動画のサムネイルのWebVTTファイルの内容"
+        "403":
+          description: "アクセスが拒否されました。無効なトークンの可能性があります。"
+        "404":
+          description: "動画が見つかりませんでした。"
   /unauthApi/embed/{id}/comments:
     get:
       summary: "動画のコメントの取得（埋め込み用）"
