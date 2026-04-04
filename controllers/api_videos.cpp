@@ -624,9 +624,17 @@ drogon::Task<drogon::HttpResponsePtr> videos::buildVideoThumbnailVtt(std::string
 		std::string token = Token::generateEmbedToken(id);
 		if (isEmbed) {
 			const std::string before_str = "api/videos";
-			while (webVTT.find(before_str) != std::string::npos) {
-				webVTT.replace(webVTT.find(before_str), before_str.length(), "unauthApi/embed");
-				webVTT.insert(webVTT.find(".jpg") + std::string(".jpg").length(), "?token=" + token);
+			size_t pos = 0;
+			while ((pos = webVTT.find(before_str, pos)) != std::string::npos) {
+				webVTT.replace(pos, before_str.length(), "unauthApi/embed");
+				size_t jpg_pos = webVTT.find(".jpg", pos);
+				if (jpg_pos != std::string::npos) {
+					size_t insert_pos = jpg_pos + std::string(".jpg").length();
+					webVTT.insert(insert_pos, "?token=" + token);
+					pos = insert_pos + std::string("?token=").length() + token.length();
+				} else {
+					pos += std::string("unauthApi/embed").length();
+				}
 			}
 		}
 		auto resp = drogon::HttpResponse::newHttpResponse();
