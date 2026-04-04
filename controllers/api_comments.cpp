@@ -147,10 +147,8 @@ drogon::Task<drogon::HttpResponsePtr> comments::deleteComment(HttpRequestPtr req
 
 drogon::Task<drogon::HttpResponsePtr> comments::getEmbedComments([[maybe_unused]] HttpRequestPtr req, std::string videoId) {
     // 一応こっちでも認証
-    const char* EMBED_TOKEN_SECRET_KEY = std::getenv("EMBED_TOKEN_SECRET_KEY");
-    std::string SEACRET_KEY = EMBED_TOKEN_SECRET_KEY ? EMBED_TOKEN_SECRET_KEY : "default_secret_key";
     auto token = req->getOptionalParameter<std::string>("token").value_or("");
-    if (!Token::validateToken(videoId, token, std::string(SEACRET_KEY))) {
+    if (!Token::validateToken(videoId, token)) {
         auto resp = drogon::HttpResponse::newHttpResponse();
         resp->setStatusCode(drogon::HttpStatusCode::k403Forbidden);
         resp->setBody("Forbidden");

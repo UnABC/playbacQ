@@ -15,13 +15,11 @@ void AuthFilter::doFilter(const HttpRequestPtr& req,
 {
     if (req->path().starts_with("/unauthApi/embed/")) {
         auto token = req->getOptionalParameter<std::string>("token").value_or("");
-        const char* EMBED_TOKEN_SECRET_KEY = std::getenv("EMBED_TOKEN_SECRET_KEY");
-        std::string SEACRET_KEY = EMBED_TOKEN_SECRET_KEY ? EMBED_TOKEN_SECRET_KEY : "default_secret_key";
         std::string videoId = req->path().substr(req->path().find_last_of('/') + 1);
         if (videoId.find("/comments") != std::string::npos) {
             videoId = videoId.substr(0, videoId.find("/comments"));
         }
-        if (Token::validateToken(videoId, token, std::string(SEACRET_KEY))) {
+        if (Token::validateToken(videoId, token)) {
             fccb();
             return;
         }

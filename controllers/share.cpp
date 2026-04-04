@@ -61,9 +61,7 @@ drogon::Task<drogon::HttpResponsePtr> share::shareVideo(HttpRequestPtr req, std:
             resp->setBody("Failed to retrieve video: " + std::string(e.what()));
             co_return resp;
         }
-        const char* EMBED_TOKEN_SECRET_KEY = std::getenv("EMBED_TOKEN_SECRET_KEY");
-        std::string SEACRET_KEY = EMBED_TOKEN_SECRET_KEY ? EMBED_TOKEN_SECRET_KEY : "default_secret_key";
-        std::string Token = Token::generateEmbedToken(id, SEACRET_KEY);
+        std::string Token = Token::generateEmbedToken(id);
         std::string embedUrl = baseUrl + "/embed/" + id + "?token=" + Token;
         std::string pageUrl = baseUrl + "/watch/" + id;
         std::string thumbnailUrl = baseUrl + "/share/" + id + "/thumbnail";
