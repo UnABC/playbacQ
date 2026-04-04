@@ -12,6 +12,7 @@ namespace api
   {
   private:
     bool embedAuth(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> buildVideoThumbnailVtt(std::string id, bool isEmbed);
   public:
     METHOD_LIST_BEGIN;
     ADD_METHOD_TO(videos::getVideos, "/api/videos", Get);
@@ -58,7 +59,7 @@ namespace api
 
     drogon::Task<drogon::HttpResponsePtr> getVideoTopThumbnail(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr> getVideoThumbnails(HttpRequestPtr req, std::string id, std::string filename);
-    drogon::Task<drogon::HttpResponsePtr> getVideoThumbnailVtt(HttpRequestPtr req, std::string id, bool isEmbed = false);
+    drogon::Task<drogon::HttpResponsePtr> getVideoThumbnailVtt(HttpRequestPtr req, std::string id);
 
     drogon::Task<drogon::HttpResponsePtr> getTags(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr> addTag(HttpRequestPtr req, std::string id);

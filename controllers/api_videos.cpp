@@ -615,7 +615,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnails([[maybe_unused]
 	}
 }
 
-drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnailVtt([[maybe_unused]] HttpRequestPtr req, std::string id, bool isEmbed) {
+drogon::Task<drogon::HttpResponsePtr> videos::buildVideoThumbnailVtt(std::string id, bool isEmbed) {
 	// WebVTTファイルを取得
 	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 	try {
@@ -647,6 +647,10 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnailVtt([[maybe_unuse
 		resp->setBody("Failed to fetch thumbnail VTT from MinIO: " + std::string(e.what()));
 		co_return resp;
 	}
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnailVtt([[maybe_unused]] HttpRequestPtr req, std::string id) {
+	co_return co_await buildVideoThumbnailVtt(id, false);
 }
 
 drogon::Task<drogon::HttpResponsePtr> videos::getTags([[maybe_unused]] HttpRequestPtr req, std::string video_id) {
@@ -813,7 +817,7 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVtt(HttpRequestPtr req, std::st
 		resp->setBody("Forbidden");
 		co_return resp;
 	}
-	co_return co_await getVideoThumbnailVtt(req, id, true);
+	co_return co_await buildVideoThumbnailVtt(id, true);
 }
 
 drogon::Task<drogon::HttpResponsePtr> videos::getThumbnails(HttpRequestPtr req, std::string id, std::string filename) {
