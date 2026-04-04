@@ -615,12 +615,18 @@ drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnails([[maybe_unused]
 	}
 }
 
-drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnailVtt([[maybe_unused]] HttpRequestPtr req, std::string id) {
+drogon::Task<drogon::HttpResponsePtr> videos::getVideoThumbnailVtt([[maybe_unused]] HttpRequestPtr req, std::string id, bool isEmbed) {
 	// WebVTTファイルを取得
 	drogon::orm::CoroMapper<drogon_model::playbacq::Videos> mapper(drogon::app().getDbClient());
 	try {
 		auto s3Plugin = drogon::app().getPlugin<S3Plugin>();
 		std::string webVTT = s3Plugin->getObject("hls/" + id + "/thumbnails.vtt");
+		if (isEmbed) {
+			const std::string before_str = "api/videos";
+			while (webVTT.find(before_str) != std::string::npos) {
+				webVTT.replace(webVTT.find(before_str), before_str.length(), "unauthApi/embed");
+			}
+		}
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setBody(webVTT);
 		resp->setContentTypeCode(drogon::CT_CUSTOM);
@@ -781,12 +787,16 @@ drogon::Task<drogon::HttpResponsePtr> videos::removeTag(HttpRequestPtr req, std:
 	}
 }
 
-drogon::Task<drogon::HttpResponsePtr> videos::getM3u8(HttpRequestPtr req, std::string id) {
-	// 念のためこっちでも認証の確認
+bool videos::embedAuth(HttpRequestPtr req, std::string id) {
 	const char* EMBED_TOKEN_SECRET_KEY = std::getenv("EMBED_TOKEN_SECRET_KEY");
 	std::string SECRET_KEY = EMBED_TOKEN_SECRET_KEY ? EMBED_TOKEN_SECRET_KEY : "default_secret_key";
 	auto token = req->getOptionalParameter<std::string>("token").value_or("");
-	if (!Token::validateToken(id, token, std::string(SECRET_KEY))) {
+	return Token::validateToken(id, token, std::string(SECRET_KEY));
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::getM3u8(HttpRequestPtr req, std::string id) {
+	// 念のためこっちでも認証の確認
+	if (!embedAuth(req, id)) {
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k403Forbidden);
 		resp->setBody("Forbidden");
@@ -797,14 +807,22 @@ drogon::Task<drogon::HttpResponsePtr> videos::getM3u8(HttpRequestPtr req, std::s
 
 drogon::Task<drogon::HttpResponsePtr> videos::getVtt(HttpRequestPtr req, std::string id) {
 	// 念のためこっちでも認証の確認
-	const char* EMBED_TOKEN_SECRET_KEY = std::getenv("EMBED_TOKEN_SECRET_KEY");
-	std::string SECRET_KEY = EMBED_TOKEN_SECRET_KEY ? EMBED_TOKEN_SECRET_KEY : "default_secret_key";
-	auto token = req->getOptionalParameter<std::string>("token").value_or("");
-	if (!Token::validateToken(id, token, std::string(SECRET_KEY))) {
+	if (!embedAuth(req, id)) {
 		auto resp = drogon::HttpResponse::newHttpResponse();
 		resp->setStatusCode(drogon::HttpStatusCode::k403Forbidden);
 		resp->setBody("Forbidden");
 		co_return resp;
 	}
-	co_return co_await getVideoThumbnailVtt(req, id);
+	co_return co_await getVideoThumbnailVtt(req, id, true);
+}
+
+drogon::Task<drogon::HttpResponsePtr> videos::getThumbnails(HttpRequestPtr req, std::string id, std::string filename) {
+	// 念のためこっちでも認証の確認
+	if (!embedAuth(req, id)) {
+		auto resp = drogon::HttpResponse::newHttpResponse();
+		resp->setStatusCode(drogon::HttpStatusCode::k403Forbidden);
+		resp->setBody("Forbidden");
+		co_return resp;
+	}
+	co_return co_await getVideoThumbnails(req, id, filename);
 }

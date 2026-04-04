@@ -10,6 +10,8 @@ namespace api
 {
   class videos : public drogon::HttpController<videos>
   {
+  private:
+    bool embedAuth(HttpRequestPtr req, std::string id);
   public:
     METHOD_LIST_BEGIN;
     ADD_METHOD_TO(videos::getVideos, "/api/videos", Get);
@@ -37,6 +39,7 @@ namespace api
 
     ADD_METHOD_TO(videos::getM3u8, "/unauthApi/embed/{1}", Get);
     ADD_METHOD_TO(videos::getVtt, "/unauthApi/embed/{1}/vtt", Get);
+    ADD_METHOD_TO(videos::getThumbnails, "/unauthApi/embed/{1}/thumbnails/{2}", Get);
     METHOD_LIST_END;
     drogon::Task<drogon::HttpResponsePtr> getVideos(HttpRequestPtr req);
     drogon::Task<drogon::HttpResponsePtr> postVideos(HttpRequestPtr req);
@@ -55,7 +58,7 @@ namespace api
 
     drogon::Task<drogon::HttpResponsePtr> getVideoTopThumbnail(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr> getVideoThumbnails(HttpRequestPtr req, std::string id, std::string filename);
-    drogon::Task<drogon::HttpResponsePtr> getVideoThumbnailVtt(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> getVideoThumbnailVtt(HttpRequestPtr req, std::string id, bool isEmbed = false);
 
     drogon::Task<drogon::HttpResponsePtr> getTags(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr> addTag(HttpRequestPtr req, std::string id);
@@ -63,5 +66,6 @@ namespace api
 
     drogon::Task<drogon::HttpResponsePtr> getM3u8(HttpRequestPtr req, std::string id);
     drogon::Task<drogon::HttpResponsePtr> getVtt(HttpRequestPtr req, std::string id);
+    drogon::Task<drogon::HttpResponsePtr> getThumbnails(HttpRequestPtr req, std::string id, std::string filename);
   };
 }
