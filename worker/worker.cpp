@@ -13,6 +13,8 @@
 #include <aws/core/auth/AWSCredentials.h>
 #include <curl/curl.h>
 
+#define USE_NVIDIA_ENCODER
+
 bool upload2MinIO(const std::string& local_file_path, const std::string& bucket_name, const std::string& object_key) {
 	const char* envUser = std::getenv("MINIO_ROOT_USER");
 	const char* envPassword = std::getenv("MINIO_ROOT_PASSWORD");
@@ -111,8 +113,7 @@ void postEncodeResult(const std::string& videoId, const std::string& status, con
 			std::cerr << "Failed to initialize CURL" << std::endl;
 			return;
 		}
-	}
-	catch (const sw::redis::Error& e) {
+	} catch (const sw::redis::Error& e) {
 		std::cerr << "Redis publish error: " << e.what() << std::endl;
 	}
 }
@@ -253,8 +254,7 @@ int main() {
 							postEncodeResult(video_id, "failed", "Invalid video duration");
 							continue;
 						}
-					}
-					catch (const std::exception& e) {
+					} catch (const std::exception& e) {
 						std::cerr << "ffprobe error: " << e.what() << std::endl;
 						postEncodeResult(video_id, "failed", "ffprobe error: " + std::string(e.what()));
 						continue;
@@ -278,17 +278,18 @@ int main() {
 
 						boost::process::ipstream output_stream;
 						std::vector<std::string> args = {
-							// GPUエンコードの設定
+							#ifdef USE_NVIDIA_ENCODER
 							"-hwaccel", "cuda",
-							// GPUエンコードの設定ここまで
+							#endif
 							"-i", video_url,
 							"-progress", "pipe:1",
-							// GPUエンコードに設定
-							//"-c:v", "libx264",
+							#ifdef USE_NVIDIA_ENCODER
 							"-c:v", "h264_nvenc",
 							"-preset", "p4",
 							"-b:v", "2M",
-							// GPUエンコードの設定ここまで
+							#else
+							"-c:v", "libx264",
+							#endif
 							"-vf", "scale='trunc(min(1920,iw)/2)*2':'trunc(min(1080,ih)/2)*2':force_original_aspect_ratio=decrease,pad='ceil(max(iw,ih*(16/9))/2)*2':'ceil(max(ih,iw*(9/16))/2)*2':(ow-iw)/2:(oh-ih)/2:black,format=yuv420p",
 							"-g", "60",
 							"-sc_threshold", "0",
@@ -323,8 +324,7 @@ int main() {
 										last_notified_percent = current_percent;
 										std::cout << "Progress updated: " << current_percent << "% for video ID: " << video_id << std::endl;
 									}
-								}
-								catch (const std::exception& e) {
+								} catch (const std::exception& e) {
 									// パース失敗時 (out_time_us=N/A などが来た場合) は無視して続行
 								}
 							}
@@ -341,19 +341,25 @@ int main() {
 						}
 						// シークバー用のサムネ生成
 						std::vector<std::string> thumb_args = {
-							// GPUエンコードの設定
+							#ifdef USE_NVIDIA_ENCODER
 							"-hwaccel", "cuda",
-							// GPUエンコードの設定ここまで
+							#endif
+							"-progress", "pipe:1",
 							"-i", video_url,
 							"-vf", std::format("fps=1/{},scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2:black,tile=10x10", interval),
 							"-q:v", "2",
 							base_dir + "thumbnail%03d.jpg"
 						};
+						boost::process::ipstream output_thumb_stream;
 						boost::process::child ffmpeg_thumb(ffmpeg_path,
 							boost::process::args(thumb_args),
 							boost::process::std_in.close(),
-							boost::process::std_out.close(),
+							boost::process::std_out > output_thumb_stream,
 							boost::process::std_err.close());
+						std::string thumb_line;
+						while (std::getline(output_thumb_stream, thumb_line)) {
+							std::cout << "[FFmpeg Thumbnail] " << thumb_line << std::endl;
+						}
 						ffmpeg_thumb.wait();
 						exit_code = ffmpeg_thumb.exit_code();
 						if (exit_code == 0) {
@@ -367,9 +373,9 @@ int main() {
 						//ホンモノのサムネ生成
 						int thumb_time = std::min(4, static_cast<int>(total_duration_sec / 2));
 						std::vector<std::string> thumb_args2 = {
-							// GPUエンコードの設定
+							#ifdef USE_NVIDIA_ENCODER
 							"-hwaccel", "cuda",
-							// GPUエンコードの設定ここまで
+							#endif
 							"-ss", std::to_string(thumb_time),
 							"-i", video_url,
 							"-vf", "thumbnail,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black",
@@ -390,8 +396,7 @@ int main() {
 							postEncodeResult(video_id, "failed", "ffmpeg exited with code " + std::to_string(exit_code));
 							continue;
 						}
-					}
-					catch (const std::exception& e) {
+					} catch (const std::exception& e) {
 						std::cerr << "Encoding Error: " << e.what() << std::endl;
 						postEncodeResult(video_id, "failed", "Encoding error: " + std::string(e.what()));
 						continue;
@@ -440,8 +445,7 @@ int main() {
 				}
 			}
 
-		}
-		catch (const sw::redis::Error& e) {
+		} catch (const sw::redis::Error& e) {
 			std::cerr << "Redis Error: " << e.what() << std::endl;
 			return 1;
 		}
