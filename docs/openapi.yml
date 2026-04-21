@@ -895,6 +895,62 @@ paths:
           description: "アクセスが拒否されました。"
         "404":
           description: "動画が見つかりませんでした。"
+  /api/user/{id}/likes:
+    get:
+      summary: "ユーザーがいいねした動画ID一覧の取得"
+      operationId: getUserLikes
+      x-tested: false
+      tags:
+        - User
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "ユーザーのID"
+      responses:
+        "200":
+          description: "ユーザーがいいねした動画ID一覧を返します。"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  description: "動画ID"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "ユーザーが見つかりませんでした。"
+  /api/user/{id}/comments:
+    get:
+      summary: "ユーザーがコメントした動画IDの一覧の取得"
+      operationId: getUserComments
+      x-tested: false
+      tags:
+        - User
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "ユーザーのID"
+      responses:
+        "200":
+          description: "ユーザーがコメントした動画IDの一覧を返します。"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  description: "動画ID"
+        "403":
+          description: "アクセスが拒否されました。"
+        "404":
+          description: "ユーザーが見つかりませんでした。"
 components:
   schemas:
     Video:
